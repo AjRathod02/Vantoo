@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AdminPageShell } from "@/components/admin/AdminPageShell";
+import { AdminCardSkeleton } from "@/components/admin/AdminTableSkeleton";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatINR } from "@/lib/utils";
@@ -37,18 +38,17 @@ export default function AdminRefundsPage() {
   };
 
   return (
-    <>
-      <AdminHeader title="Refund Management" subtitle="Process and track refund requests" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {loading ? (
-          <p className="text-ink-muted">Loading refunds...</p>
-        ) : refunds.length === 0 ? (
-          <p className="text-ink-muted">No refund requests.</p>
-        ) : (
-          refunds.map((o) => (
+    <AdminPageShell title="Refund Management" subtitle="Process and track refund requests">
+      {loading ? (
+        <AdminCardSkeleton count={3} />
+      ) : refunds.length === 0 ? (
+        <p className="text-ink-muted">No refund requests.</p>
+      ) : (
+        <div className="space-y-4">
+          {refunds.map((o) => (
             <div
               key={o.id}
-              className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card"
+              className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5"
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -61,34 +61,48 @@ export default function AdminRefundsPage() {
                   {o.refundStatus}
                 </Badge>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 {o.refundStatus === "requested" && (
                   <>
-                    <Button size="sm" onClick={() => process(o.id, "approve", o.total)}>
+                    <Button
+                      size="md"
+                      className="min-h-11 w-full sm:w-auto"
+                      onClick={() => process(o.id, "approve", o.total)}
+                    >
                       Approve Full
                     </Button>
                     <Button
-                      size="sm"
+                      size="md"
                       variant="outline"
+                      className="min-h-11 w-full sm:w-auto"
                       onClick={() => process(o.id, "partial", o.total * 0.5)}
                     >
                       Partial 50%
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => process(o.id, "reject")}>
+                    <Button
+                      size="md"
+                      variant="outline"
+                      className="min-h-11 w-full sm:w-auto"
+                      onClick={() => process(o.id, "reject")}
+                    >
                       Reject
                     </Button>
                   </>
                 )}
                 {o.refundStatus === "processing" && (
-                  <Button size="sm" onClick={() => process(o.id, "complete")}>
+                  <Button
+                    size="md"
+                    className="min-h-11 w-full sm:w-auto"
+                    onClick={() => process(o.id, "complete")}
+                  >
                     Mark Completed
                   </Button>
                 )}
               </div>
             </div>
-          ))
-        )}
-      </div>
-    </>
+          ))}
+        </div>
+      )}
+    </AdminPageShell>
   );
 }

@@ -242,64 +242,117 @@ export default function AdminCouponsPage() {
         ) : coupons.length === 0 ? (
           <p className="text-sm text-ink-muted">No coupons yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead>
-                <tr className="border-b text-ink-muted">
-                  <th className="pb-2 font-medium">Code</th>
-                  <th className="pb-2 font-medium">Discount</th>
-                  <th className="pb-2 font-medium">Uses</th>
-                  <th className="pb-2 font-medium">Expires</th>
-                  <th className="pb-2 font-medium">Status</th>
-                  <th className="pb-2 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {coupons.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-50">
-                    <td className="py-3">
+          <>
+            <ul className="space-y-3 md:hidden">
+              {coupons.map((c) => (
+                <li
+                  key={c.id}
+                  className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
                       <p className="font-medium text-ink">{c.code}</p>
-                      <p className="text-xs text-ink-soft">{c.description}</p>
-                    </td>
-                    <td className="py-3">
-                      {c.discount_type === "percent"
-                        ? `${c.discount_value}%`
-                        : `₹${c.discount_value}`}
-                      {c.min_order_amount > 0 && (
-                        <span className="block text-xs text-ink-soft">
-                          min ₹{c.min_order_amount}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3">
-                      {c.used_count}
-                      {c.max_uses != null ? ` / ${c.max_uses}` : ""}
-                    </td>
-                    <td className="py-3 text-xs text-ink-soft">
-                      {c.expires_at
-                        ? new Date(c.expires_at).toLocaleString("en-IN")
-                        : "—"}
-                    </td>
-                    <td className="py-3">
-                      <Badge tone={c.is_active ? "green" : "gray"}>
-                        {c.is_active ? "Active" : "Off"}
-                      </Badge>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => startEdit(c)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => remove(c.id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
+                      <p className="text-sm text-ink-muted">{c.description}</p>
+                    </div>
+                    <Badge tone={c.is_active ? "green" : "gray"}>
+                      {c.is_active ? "Active" : "Off"}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-ink">
+                    {c.discount_type === "percent"
+                      ? `${c.discount_value}%`
+                      : `₹${c.discount_value}`}
+                    {c.min_order_amount > 0 && (
+                      <span className="text-ink-soft"> · min ₹{c.min_order_amount}</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-ink-soft">
+                    Uses {c.used_count}
+                    {c.max_uses != null ? ` / ${c.max_uses}` : ""}
+                    {c.expires_at
+                      ? ` · Exp ${new Date(c.expires_at).toLocaleDateString("en-IN")}`
+                      : ""}
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2">
+                    <Button
+                      size="md"
+                      variant="outline"
+                      className="min-h-11 w-full"
+                      onClick={() => startEdit(c)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="md"
+                      variant="outline"
+                      className="min-h-11 w-full"
+                      onClick={() => remove(c.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto rounded-2xl border border-gray-100 bg-white p-5 shadow-card md:block">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b text-ink-muted">
+                    <th className="pb-2 font-medium">Code</th>
+                    <th className="pb-2 font-medium">Discount</th>
+                    <th className="pb-2 font-medium">Uses</th>
+                    <th className="pb-2 font-medium">Expires</th>
+                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {coupons.map((c) => (
+                    <tr key={c.id} className="border-b border-gray-50">
+                      <td className="py-3">
+                        <p className="font-medium text-ink">{c.code}</p>
+                        <p className="text-xs text-ink-soft">{c.description}</p>
+                      </td>
+                      <td className="py-3">
+                        {c.discount_type === "percent"
+                          ? `${c.discount_value}%`
+                          : `₹${c.discount_value}`}
+                        {c.min_order_amount > 0 && (
+                          <span className="block text-xs text-ink-soft">
+                            min ₹{c.min_order_amount}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3">
+                        {c.used_count}
+                        {c.max_uses != null ? ` / ${c.max_uses}` : ""}
+                      </td>
+                      <td className="py-3 text-xs text-ink-soft">
+                        {c.expires_at
+                          ? new Date(c.expires_at).toLocaleString("en-IN")
+                          : "—"}
+                      </td>
+                      <td className="py-3">
+                        <Badge tone={c.is_active ? "green" : "gray"}>
+                          {c.is_active ? "Active" : "Off"}
+                        </Badge>
+                      </td>
+                      <td className="py-3">
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => startEdit(c)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => remove(c.id)}>
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </AdminPageShell>

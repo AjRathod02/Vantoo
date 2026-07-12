@@ -205,7 +205,7 @@ function LiveTrackingContent() {
             key={role}
             type="button"
             onClick={() => setRoleFilter(role)}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize ${
+            className={`min-h-11 rounded-xl px-3.5 text-sm font-medium capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
               roleFilter === role
                 ? "bg-brand-primary text-white"
                 : "bg-gray-100 text-ink-muted"
@@ -217,7 +217,7 @@ function LiveTrackingContent() {
         <button
           type="button"
           onClick={() => setOnlineOnly((v) => !v)}
-          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+          className={`min-h-11 rounded-xl px-3.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
             onlineOnly
               ? "bg-brand-accent/15 text-brand-accent"
               : "bg-gray-100 text-ink-muted"
@@ -229,7 +229,8 @@ function LiveTrackingContent() {
           <select
             value={cityFilter}
             onChange={(e) => setCityFilter(e.target.value)}
-            className="rounded-full border-0 bg-gray-100 px-3 py-1.5 text-sm text-ink-muted"
+            className="min-h-11 rounded-xl border-0 bg-gray-100 px-3 text-sm text-ink-muted"
+            aria-label="Filter by city"
           >
             <option value="">All cities</option>
             {cities.map((c) => (
@@ -243,22 +244,22 @@ function LiveTrackingContent() {
 
       <FleetLiveMap
         locations={fleetLocations}
-        className="overflow-hidden rounded-2xl border border-gray-100 shadow-card"
+        className="h-[min(50dvh,24rem)] overflow-hidden rounded-2xl border border-gray-100 shadow-card sm:h-[28rem]"
       />
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-bold text-ink">
             Active deliveries ({filteredOrders.length})
           </h2>
-          <p className="text-xs text-ink-soft">Auto-refresh every 8s · click for detail</p>
+          <p className="text-xs text-ink-soft">Auto-refresh every 8s · tap for detail</p>
         </div>
         {loading ? (
           <AdminCardSkeleton count={2} />
         ) : filteredOrders.length === 0 ? (
           <p className="text-ink-muted">No active deliveries match your filters.</p>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {filteredOrders.map((order) => (
               <ActiveOrderCard key={order.id} order={order} />
             ))}

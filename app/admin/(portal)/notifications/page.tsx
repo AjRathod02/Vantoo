@@ -98,10 +98,10 @@ export default function AdminNotificationsPage() {
       title="Notification Center"
       subtitle="Push, email, SMS, and in-app messages to customers, vendors, riders, or selected users"
     >
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1fr]">
         <form
           onSubmit={send}
-          className="space-y-4 rounded-2xl border border-gray-100 bg-white p-6 shadow-card"
+          className="space-y-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-6"
         >
           <div>
             <p className="mb-2 text-sm font-medium text-ink">Channels</p>
@@ -111,7 +111,7 @@ export default function AdminNotificationsPage() {
                   key={c.id}
                   type="button"
                   onClick={() => toggleChannel(c.id)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  className={`min-h-11 rounded-xl px-3.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
                     channels.includes(c.id)
                       ? "bg-brand-primary text-white"
                       : "border border-gray-200 text-ink-muted"
@@ -169,12 +169,12 @@ export default function AdminNotificationsPage() {
               required
             />
           </div>
-          <Button type="submit" disabled={sending}>
+          <Button type="submit" disabled={sending} className="min-h-11 w-full sm:w-auto">
             {sending ? "Sending..." : "Send Notification"}
           </Button>
         </form>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-card">
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-6">
           <h2 className="mb-4 font-semibold text-ink">Recent sends</h2>
           {loadingLogs ? (
             <AdminTableSkeleton rows={4} cols={2} />

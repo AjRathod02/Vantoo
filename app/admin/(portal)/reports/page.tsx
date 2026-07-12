@@ -157,13 +157,13 @@ export default function AdminReportsPage() {
       subtitle="Export PDF, Excel, or CSV · custom ranges · scheduled delivery"
     >
       <div className="space-y-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar" role="listbox" aria-label="Report type">
           {REPORT_TYPES.map((r) => (
             <button
               key={r.id}
               type="button"
               onClick={() => setType(r.id)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+              className={`min-h-11 shrink-0 rounded-xl px-3.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
                 type === r.id
                   ? "bg-brand-primary text-white"
                   : "border border-gray-200 bg-white text-ink-muted"
@@ -174,14 +174,14 @@ export default function AdminReportsPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {PERIODS.map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => setPeriod(p.id)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                className={`min-h-11 shrink-0 rounded-xl px-3.5 text-sm font-medium ${
                   period === p.id
                     ? "bg-ink text-white"
                     : "border border-gray-200 bg-white text-ink-muted"
@@ -192,26 +192,26 @@ export default function AdminReportsPage() {
             ))}
           </div>
           {period === "custom" && (
-            <>
-              <label className="text-sm">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <label className="flex-1 text-sm sm:flex-none">
                 <span className="mb-1 block text-ink-muted">From</span>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-10 rounded-xl border border-gray-200 px-3"
+                  className="h-11 w-full rounded-xl border border-gray-200 px-3"
                 />
               </label>
-              <label className="text-sm">
+              <label className="flex-1 text-sm sm:flex-none">
                 <span className="mb-1 block text-ink-muted">To</span>
                 <input
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="h-10 rounded-xl border border-gray-200 px-3"
+                  className="h-11 w-full rounded-xl border border-gray-200 px-3"
                 />
               </label>
-            </>
+            </div>
           )}
         </div>
 
@@ -228,23 +228,38 @@ export default function AdminReportsPage() {
             )}
 
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-card">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
+              <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-5">
                 <h3 className="font-semibold text-ink">Report data</h3>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => handleExport("csv")}>
+                <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+                  <Button
+                    size="md"
+                    variant="outline"
+                    className="min-h-11 w-full sm:w-auto"
+                    onClick={() => handleExport("csv")}
+                  >
                     Export CSV
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleExport("xlsx")}>
+                  <Button
+                    size="md"
+                    variant="outline"
+                    className="min-h-11 w-full sm:w-auto"
+                    onClick={() => handleExport("xlsx")}
+                  >
                     Export Excel
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleExport("pdf")}>
+                  <Button
+                    size="md"
+                    variant="outline"
+                    className="min-h-11 w-full sm:w-auto"
+                    onClick={() => handleExport("pdf")}
+                  >
                     Export PDF
                   </Button>
                 </div>
               </div>
               {exportRows.length > 0 ? (
                 <div className="max-h-96 overflow-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full min-w-[480px] text-left text-sm">
                     <thead className="sticky top-0 bg-gray-50 text-ink-muted">
                       <tr>
                         {columns.map((c) => (
@@ -278,15 +293,15 @@ export default function AdminReportsPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5">
               <h3 className="mb-3 font-semibold text-ink">Schedule report</h3>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <input
                   type="email"
                   placeholder="Email delivery"
                   value={scheduleEmail}
                   onChange={(e) => setScheduleEmail(e.target.value)}
-                  className="h-11 min-w-[220px] flex-1 rounded-xl border border-gray-200 px-3 text-sm"
+                  className="h-11 min-w-0 flex-1 rounded-xl border border-gray-200 px-3 text-base sm:min-w-[220px] sm:text-sm"
                 />
                 <select
                   value={scheduleCadence}
@@ -297,7 +312,9 @@ export default function AdminReportsPage() {
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
                 </select>
-                <Button onClick={scheduleReport}>Schedule</Button>
+                <Button className="min-h-11 w-full sm:w-auto" onClick={scheduleReport}>
+                  Schedule
+                </Button>
               </div>
               <p className="mt-2 text-xs text-ink-soft">
                 Scheduled jobs are stored for the report service to pick up. Email delivery

@@ -497,7 +497,7 @@ export default function AdminProductsPage() {
             <p className="mb-6 text-sm text-ink-muted">
               Select a service type to configure category-specific fields.
             </p>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {WIZARD_SERVICES.map((service) => {
                 const Icon = CATEGORY_ICONS[service];
                 return (
@@ -579,7 +579,7 @@ export default function AdminProductsPage() {
                 />
               </div>
 
-              <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Input
                   label="Product ID"
                   placeholder="e.g. p-food-101"
@@ -690,7 +690,7 @@ export default function AdminProductsPage() {
                     {PRODUCT_CATEGORY_LABELS[form.service as WizardService]}{" "}
                     Attributes
                   </h3>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {categoryFields.map((field) => (
                       <AttributeField
                         key={field.key}

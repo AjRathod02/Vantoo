@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        // Align with admin breakpoints: mobile <768, tablet 768+, desktop 1024+, large 1440+
+        "3xl": "1440px",
+      },
       colors: {
         brand: {
           primary: "#FF6B00",

@@ -196,46 +196,85 @@ export default function AdminCategoriesPage() {
         ) : categories.length === 0 ? (
           <p className="text-sm text-ink-muted">No categories yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="border-b text-ink-muted">
-                  <th className="pb-2 font-medium">Name</th>
-                  <th className="pb-2 font-medium">Service</th>
-                  <th className="pb-2 font-medium">Sort</th>
-                  <th className="pb-2 font-medium">Status</th>
-                  <th className="pb-2 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((c) => (
-                  <tr key={c.id} className="border-b border-gray-50">
-                    <td className="py-3">
+          <>
+            <ul className="space-y-3 md:hidden">
+              {categories.map((c) => (
+                <li
+                  key={c.id}
+                  className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
                       <p className="font-medium text-ink">{c.name}</p>
-                      <p className="font-mono text-xs text-ink-soft">{c.id}</p>
-                    </td>
-                    <td className="py-3 capitalize">{c.service}</td>
-                    <td className="py-3">{c.sort_order}</td>
-                    <td className="py-3">
-                      <Badge tone={c.is_active ? "green" : "gray"}>
-                        {c.is_active ? "Active" : "Off"}
-                      </Badge>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => startEdit(c)}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => remove(c.id)}>
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
+                      <p className="text-sm capitalize text-ink-muted">{c.service}</p>
+                    </div>
+                    <Badge tone={c.is_active ? "green" : "gray"}>
+                      {c.is_active ? "Active" : "Off"}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-ink-soft">Sort {c.sort_order}</p>
+                  <div className="mt-3 flex flex-col gap-2">
+                    <Button
+                      size="md"
+                      variant="outline"
+                      className="min-h-11 w-full"
+                      onClick={() => startEdit(c)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="md"
+                      variant="outline"
+                      className="min-h-11 w-full"
+                      onClick={() => remove(c.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto rounded-2xl border border-gray-100 bg-white p-5 shadow-card md:block">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="border-b text-ink-muted">
+                    <th className="pb-2 font-medium">Name</th>
+                    <th className="pb-2 font-medium">Service</th>
+                    <th className="pb-2 font-medium">Sort</th>
+                    <th className="pb-2 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {categories.map((c) => (
+                    <tr key={c.id} className="border-b border-gray-50">
+                      <td className="py-3">
+                        <p className="font-medium text-ink">{c.name}</p>
+                        <p className="font-mono text-xs text-ink-soft">{c.id}</p>
+                      </td>
+                      <td className="py-3 capitalize">{c.service}</td>
+                      <td className="py-3">{c.sort_order}</td>
+                      <td className="py-3">
+                        <Badge tone={c.is_active ? "green" : "gray"}>
+                          {c.is_active ? "Active" : "Off"}
+                        </Badge>
+                      </td>
+                      <td className="py-3">
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => startEdit(c)}>
+                            Edit
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => remove(c.id)}>
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </AdminPageShell>

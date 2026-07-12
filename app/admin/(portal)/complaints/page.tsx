@@ -198,14 +198,14 @@ function AdminComplaintsContent() {
         ) : tickets.length === 0 ? (
           <p className="text-ink-muted">No support tickets.</p>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
             <div className="space-y-3">
               {tickets.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => openTicket(t)}
-                  className={`w-full rounded-2xl border p-5 text-left shadow-card transition-colors ${
+                  className={`min-h-11 w-full rounded-2xl border p-4 text-left shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary sm:p-5 ${
                     selected?.id === t.id
                       ? "border-brand-primary bg-brand-primary/5"
                       : "border-gray-100 bg-white hover:bg-gray-50"
@@ -236,7 +236,7 @@ function AdminComplaintsContent() {
             </div>
 
             {selected && (
-              <div className="h-fit space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-card xl:sticky xl:top-4">
+              <div className="h-fit space-y-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5 xl:sticky xl:top-4">
                 <div>
                   <p className="font-mono text-xs text-ink-soft">{selected.ticket_number}</p>
                   <h2 className="text-lg font-bold text-ink">{selected.subject}</h2>
@@ -245,7 +245,7 @@ function AdminComplaintsContent() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs text-ink-soft">Priority</p>
                     <select
@@ -253,7 +253,7 @@ function AdminComplaintsContent() {
                       onChange={(e) =>
                         updateTicket(selected.id, { priority: e.target.value })
                       }
-                      className="mt-1 h-9 w-full rounded-lg border border-gray-200 px-2"
+                      className="mt-1 h-11 w-full rounded-xl border border-gray-200 px-3"
                     >
                       {["low", "medium", "high", "critical"].map((p) => (
                         <option key={p} value={p}>
@@ -269,7 +269,7 @@ function AdminComplaintsContent() {
                       onChange={(e) =>
                         updateTicket(selected.id, { status: e.target.value })
                       }
-                      className="mt-1 h-9 w-full rounded-lg border border-gray-200 px-2"
+                      className="mt-1 h-11 w-full rounded-xl border border-gray-200 px-3"
                     >
                       {[
                         "open",

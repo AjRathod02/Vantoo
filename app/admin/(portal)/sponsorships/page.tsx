@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AdminPageShell } from "@/components/admin/AdminPageShell";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatINR } from "@/lib/utils";
@@ -76,29 +76,29 @@ export default function AdminSponsorshipsPage() {
   };
 
   return (
-    <>
-      <AdminHeader
-        title="Sponsorships & Offers"
-        subtitle="Approve restaurant sponsorships and manage flash deals"
-      />
-      <div className="flex-1 space-y-6 overflow-y-auto p-6">
-        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
+    <AdminPageShell
+      title="Sponsorships & Offers"
+      subtitle="Approve restaurant sponsorships and manage flash deals"
+    >
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5">
           <h2 className="mb-4 font-semibold text-ink">Sponsorship Packages</h2>
           <div className="space-y-3">
             {packages.map((p) => (
               <div
                 key={p.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3"
+                className="flex flex-col gap-3 rounded-xl bg-gray-50 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="font-medium text-ink">{p.name}</p>
                   <p className="text-xs text-ink-soft">{p.duration_days} days</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="number"
                     defaultValue={Number(p.price)}
-                    className="h-9 w-28 rounded-lg border border-gray-200 px-2 text-sm"
+                    aria-label={`${p.name} price`}
+                    className="h-11 w-full max-w-[8rem] rounded-xl border border-gray-200 px-3 text-sm sm:w-28"
                     onBlur={(e) => updatePrice(p.id, Number(e.target.value))}
                   />
                   <Badge tone={p.is_active ? "green" : "gray"}>
@@ -115,9 +115,39 @@ export default function AdminSponsorshipsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
+        <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5">
           <h2 className="mb-4 font-semibold text-ink">Sponsorship Requests</h2>
-          <div className="overflow-x-auto">
+          {/* Mobile cards */}
+          <ul className="space-y-3 md:hidden">
+            {sponsorships.map((s) => (
+              <li key={s.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-ink">{s.restaurant_name}</p>
+                  <Badge>{s.status}</Badge>
+                </div>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {formatINR(Number(s.amount_paid))}
+                </p>
+                <p className="text-xs text-ink-soft">
+                  {s.starts_at
+                    ? new Date(s.starts_at).toLocaleDateString("en-IN")
+                    : "—"}{" "}
+                  →{" "}
+                  {s.ends_at ? new Date(s.ends_at).toLocaleDateString("en-IN") : "—"}
+                </p>
+                {s.status === "pending" && (
+                  <Button
+                    size="md"
+                    className="mt-3 min-h-11 w-full"
+                    onClick={() => approve(s.id)}
+                  >
+                    Approve
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
                 <tr className="border-b text-ink-muted">
@@ -159,13 +189,13 @@ export default function AdminSponsorshipsPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
+        <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5">
           <h2 className="mb-4 font-semibold text-ink">Flash Offers</h2>
           <div className="space-y-2">
             {offers.map((o) => (
               <div
                 key={o.id}
-                className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"
+                className="flex flex-col gap-2 rounded-xl bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="font-medium text-ink">
@@ -183,6 +213,6 @@ export default function AdminSponsorshipsPage() {
           </div>
         </section>
       </div>
-    </>
+    </AdminPageShell>
   );
 }

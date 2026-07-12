@@ -41,24 +41,27 @@ export function AdminActionsMenu({
         type="button"
         aria-label={label}
         aria-expanded={open}
+        aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-ink-muted hover:bg-gray-50 hover:text-ink"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-gray-200 text-ink-muted hover:bg-gray-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
       >
         <MoreHorizontal className="h-4 w-4" />
       </button>
       {open && (
         <div
+          role="menu"
           className={cn(
-            "absolute z-30 mt-1 min-w-[180px] overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-lg",
+            "absolute z-30 mt-1 min-w-[200px] overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-lg",
             align === "right" ? "right-0" : "left-0"
           )}
         >
           {items.map((item, i) =>
             item.divider ? (
-              <div key={i} className="my-1 border-t border-gray-100" />
+              <div key={i} className="my-1 border-t border-gray-100" role="separator" />
             ) : (
               <button
                 key={item.label + i}
+                role="menuitem"
                 type="button"
                 disabled={item.disabled}
                 onClick={() => {
@@ -66,7 +69,7 @@ export function AdminActionsMenu({
                   item.onClick();
                 }}
                 className={cn(
-                  "block w-full px-3 py-2 text-left text-sm transition-colors disabled:opacity-40",
+                  "block min-h-11 w-full px-3 py-2.5 text-left text-sm transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:bg-gray-50",
                   item.tone === "danger" && "text-brand-secondary hover:bg-red-50",
                   item.tone === "success" && "text-green-700 hover:bg-green-50",
                   (!item.tone || item.tone === "default") && "text-ink hover:bg-gray-50"

@@ -41,10 +41,11 @@ function TrackingView({ data }: { data: TrackingPayload }) {
     location?.distanceRemainingM ?? data.distanceRemainingM ?? null;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+    <div className="flex flex-col gap-4 lg:gap-6 xl:grid xl:grid-cols-[1.4fr_1fr]">
+      {/* Map — full-bleed feel on mobile */}
       <div className="space-y-4">
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-card">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
+        <div className="overflow-hidden rounded-none border-y border-gray-100 bg-white shadow-card sm:rounded-2xl sm:border">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-ink-soft">
                 Live map
@@ -65,7 +66,7 @@ function TrackingView({ data }: { data: TrackingPayload }) {
             </div>
           </div>
           <LiveTrackingMap
-            className="h-[420px] w-full"
+            className="h-[min(55dvh,28rem)] w-full sm:h-[420px]"
             status={order.status}
             showRoute
             rider={
@@ -115,7 +116,7 @@ function TrackingView({ data }: { data: TrackingPayload }) {
           />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 px-0 sm:grid-cols-3">
           <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card">
             <p className="text-xs text-ink-soft">ETA</p>
             <p className="mt-1 text-xl font-bold text-ink">
@@ -143,6 +144,7 @@ function TrackingView({ data }: { data: TrackingPayload }) {
         </div>
       </div>
 
+      {/* Info panel — stacks below map on mobile */}
       <div className="space-y-4">
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
           <h3 className="mb-3 flex items-center gap-2 font-semibold text-ink">

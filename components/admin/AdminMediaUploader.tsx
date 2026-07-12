@@ -136,27 +136,30 @@ export function AdminMediaUploader({
           if (e.dataTransfer.files?.length) processFiles(e.dataTransfer.files, "auto");
         }}
         className={cn(
-          "flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 transition-colors",
+          "flex min-h-[11rem] flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 transition-colors",
           dragOver
             ? "border-brand-primary bg-brand-primary/5"
             : "border-gray-200 bg-gray-50"
         )}
       >
-        <ImagePlus className="mb-2 h-8 w-8 text-ink-soft" />
-        <p className="text-sm font-medium text-ink">Drag & drop images or videos</p>
+        <ImagePlus className="mb-2 h-8 w-8 text-ink-soft" aria-hidden />
+        <p className="text-center text-sm font-medium text-ink">
+          <span className="hidden sm:inline">Drag & drop images or videos</span>
+          <span className="sm:hidden">Upload images or videos</span>
+        </p>
         {specs}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
-            className="rounded-xl bg-brand-primary px-3 py-2 text-sm font-semibold text-white"
+            className="min-h-11 rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2"
           >
             Add images
           </button>
           <button
             type="button"
             onClick={() => videoInputRef.current?.click()}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-ink"
+            className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
           >
             Add videos
           </button>
@@ -214,12 +217,13 @@ export function AdminMediaUploader({
                     <button
                       type="button"
                       title="Set as thumbnail"
+                      aria-label="Set as thumbnail"
                       onClick={() => onThumbnailChange(img.id)}
-                      className="rounded-md bg-white/90 p-1"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-white/90"
                     >
                       <Star
                         className={cn(
-                          "h-3.5 w-3.5",
+                          "h-4 w-4",
                           thumb === img.id ? "fill-amber-400 text-amber-400" : "text-ink-muted"
                         )}
                       />
@@ -227,14 +231,15 @@ export function AdminMediaUploader({
                     <button
                       type="button"
                       title="Remove"
+                      aria-label="Remove image"
                       onClick={() => {
                         const next = images.filter((i) => i.id !== img.id);
                         onImagesChange(next);
                         if (thumb === img.id && next[0]) onThumbnailChange(next[0].id);
                       }}
-                      className="rounded-md bg-white/90 p-1 text-brand-secondary"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-white/90 text-brand-secondary"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>

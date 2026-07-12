@@ -6,6 +6,20 @@
   --font-montserrat: "Montserrat", system-ui, sans-serif;
 }
 
+/* Admin: visible focus + high-contrast preference */
+@layer base {
+  :focus-visible {
+    outline: 2px solid #ff6b00;
+    outline-offset: 2px;
+  }
+
+  @media (prefers-contrast: more) {
+    .admin-contrast-boost {
+      border-color: #1a1a1a !important;
+    }
+  }
+}
+
 * {
   box-sizing: border-box;
 }

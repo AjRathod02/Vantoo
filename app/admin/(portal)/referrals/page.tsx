@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AdminPageShell } from "@/components/admin/AdminPageShell";
 import { StatCard } from "@/components/admin/StatCard";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -94,17 +94,16 @@ export default function AdminReferralsPage() {
   };
 
   return (
-    <>
-      <AdminHeader
-        title="Referrals"
-        subtitle="Program settings, transactions, and analytics"
-      />
-      <div className="flex-1 space-y-6 overflow-y-auto p-6">
+    <AdminPageShell
+      title="Referrals"
+      subtitle="Program settings, transactions, and analytics"
+    >
+      <div className="space-y-6">
         {loading || !settings || !analytics ? (
           <p className="text-ink-muted">Loading referrals...</p>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label="Total Referrals"
                 value={analytics.totalReferrals}
@@ -127,20 +126,20 @@ export default function AdminReferralsPage() {
               />
             </div>
 
-            <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
+            <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5">
               <div className="mb-4 flex items-center gap-2">
                 <ToggleLeft className="h-5 w-5 text-brand-primary" />
                 <h2 className="text-lg font-semibold text-ink">Program Settings</h2>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <label className="flex items-center gap-3 text-sm">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="flex min-h-11 items-center gap-3 text-sm">
                   <input
                     type="checkbox"
                     checked={settings.isEnabled}
                     onChange={(e) =>
                       setSettings({ ...settings, isEnabled: e.target.checked })
                     }
-                    className="h-4 w-4 rounded border-gray-300"
+                    className="h-5 w-5 rounded border-gray-300"
                   />
                   <span className="text-ink">Enable referral program</span>
                 </label>
@@ -156,7 +155,7 @@ export default function AdminReferralsPage() {
                         minOrderAmount: Number(e.target.value),
                       })
                     }
-                    className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3"
+                    className="mt-1 h-11 w-full rounded-xl border border-gray-200 px-3 text-base sm:text-sm"
                   />
                 </label>
                 <label className="text-sm">
@@ -173,92 +172,141 @@ export default function AdminReferralsPage() {
                         commissionPercent: Number(e.target.value),
                       })
                     }
-                    className="mt-1 h-10 w-full rounded-xl border border-gray-200 px-3"
+                    className="mt-1 h-11 w-full rounded-xl border border-gray-200 px-3 text-base sm:text-sm"
                   />
                 </label>
               </div>
-              <Button className="mt-4" onClick={saveSettings} disabled={saving}>
+              <Button className="mt-4 min-h-11 w-full sm:w-auto" onClick={saveSettings} disabled={saving}>
                 {saving ? "Saving..." : "Save Settings"}
               </Button>
             </section>
 
-            <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-card">
+            <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-card sm:p-5">
               <h2 className="mb-4 text-lg font-semibold text-ink">
                 Referral Transactions
               </h2>
               {transactions.length === 0 ? (
                 <p className="text-sm text-ink-muted">No referral transactions yet.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 text-ink-muted">
-                        <th className="pb-2 font-medium">Referrer</th>
-                        <th className="pb-2 font-medium">Friend</th>
-                        <th className="pb-2 font-medium">Order</th>
-                        <th className="pb-2 font-medium">Amount</th>
-                        <th className="pb-2 font-medium">Commission</th>
-                        <th className="pb-2 font-medium">Status</th>
-                        <th className="pb-2 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transactions.map((t) => (
-                        <tr key={t.id} className="border-b border-gray-50">
-                          <td className="py-3 text-ink">{t.referrerName}</td>
-                          <td className="py-3 text-ink">{t.referredName}</td>
-                          <td className="py-3 font-mono text-xs text-ink-muted">
-                            {t.orderId}
-                          </td>
-                          <td className="py-3">{formatINR(t.orderAmount)}</td>
-                          <td className="py-3 font-medium">
-                            {formatINR(t.commissionAmount)}
-                            <span className="ml-1 text-xs text-ink-soft">
-                              ({t.commissionPercent}%)
-                            </span>
-                          </td>
-                          <td className="py-3">
-                            <Badge
-                              tone={
-                                t.status === "completed"
-                                  ? "green"
-                                  : t.status === "rejected"
-                                    ? "red"
-                                    : "orange"
-                              }
+                <>
+                  {/* Mobile cards */}
+                  <ul className="space-y-3 md:hidden">
+                    {transactions.map((t) => (
+                      <li key={t.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-ink">{t.referrerName}</p>
+                            <p className="text-sm text-ink-muted">→ {t.referredName}</p>
+                          </div>
+                          <Badge
+                            tone={
+                              t.status === "completed"
+                                ? "green"
+                                : t.status === "rejected"
+                                  ? "red"
+                                  : "orange"
+                            }
+                          >
+                            {t.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-sm text-ink-muted">
+                          {formatINR(t.orderAmount)} · commission {formatINR(t.commissionAmount)}
+                        </p>
+                        {t.status === "pending" && (
+                          <div className="mt-3 flex flex-col gap-2">
+                            <Button
+                              size="md"
+                              className="min-h-11 w-full"
+                              onClick={() => updateReward(t.id, "completed")}
                             >
-                              {t.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3">
-                            {t.status === "pending" && (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => updateReward(t.id, "completed")}
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => updateReward(t.id, "rejected")}
-                                >
-                                  Reject
-                                </Button>
-                              </div>
-                            )}
-                          </td>
+                              Approve
+                            </Button>
+                            <Button
+                              size="md"
+                              variant="secondary"
+                              className="min-h-11 w-full"
+                              onClick={() => updateReward(t.id, "rejected")}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="w-full min-w-[720px] text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-ink-muted">
+                          <th className="pb-2 font-medium">Referrer</th>
+                          <th className="pb-2 font-medium">Friend</th>
+                          <th className="pb-2 font-medium">Order</th>
+                          <th className="pb-2 font-medium">Amount</th>
+                          <th className="pb-2 font-medium">Commission</th>
+                          <th className="pb-2 font-medium">Status</th>
+                          <th className="pb-2 font-medium">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {transactions.map((t) => (
+                          <tr key={t.id} className="border-b border-gray-50">
+                            <td className="py-3 text-ink">{t.referrerName}</td>
+                            <td className="py-3 text-ink">{t.referredName}</td>
+                            <td className="py-3 font-mono text-xs text-ink-muted">
+                              {t.orderId}
+                            </td>
+                            <td className="py-3">{formatINR(t.orderAmount)}</td>
+                            <td className="py-3 font-medium">
+                              {formatINR(t.commissionAmount)}
+                              <span className="ml-1 text-xs text-ink-soft">
+                                ({t.commissionPercent}%)
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              <Badge
+                                tone={
+                                  t.status === "completed"
+                                    ? "green"
+                                    : t.status === "rejected"
+                                      ? "red"
+                                      : "orange"
+                                }
+                              >
+                                {t.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3">
+                              {t.status === "pending" && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => updateReward(t.id, "completed")}
+                                  >
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => updateReward(t.id, "rejected")}
+                                  >
+                                    Reject
+                                  </Button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </section>
           </>
         )}
       </div>
-    </>
+    </AdminPageShell>
   );
 }
