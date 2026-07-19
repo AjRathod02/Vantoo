@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  web-and-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          PLATFORM_ENABLED: "false"
+      - name: Validate customer mobile
+        run: npm ci --prefix apps/customer-mobile && npm run typecheck --prefix apps/customer-mobile && npx --prefix apps/customer-mobile expo-doctor
+      - name: Validate vendor mobile
+        run: npm ci --prefix apps/vendor-mobile && npm run typecheck --prefix apps/vendor-mobile && npx --prefix apps/vendor-mobile expo-doctor
+      - name: Validate rider mobile
+        run: npm ci --prefix apps/rider-mobile && npm run typecheck --prefix apps/rider-mobile && npx --prefix apps/rider-mobile expo-doctor
+
+  platform-disabled-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci --prefix platform
+      - run: npm run build --prefix platform
+      - run: npm run test --prefix platform
+
+  database-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+      - run: npm ci
+      - run: npx supabase start
+      - run: npx supabase db reset
+      - name: Database RPC and concurrency tests
+        run: npm run test:db
+        env:
+          SUPABASE_LOCAL_DB_TESTS: "1"
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      - name: Export local Supabase environment
+        run: |
+          npx supabase status -o env > /tmp/supabase.env
+          echo "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321" >> "$GITHUB_ENV"
+          echo "SUPABASE_URL=http://127.0.0.1:54321" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(awk -F= '/^ANON_KEY=/{gsub(/"/,"",$2); print $2}' /tmp/supabase.env)" >> "$GITHUB_ENV"
+          echo "SUPABASE_PUBLISHABLE_KEY=$(awk -F= '/^ANON_KEY=/{gsub(/"/,"",$2); print $2}' /tmp/supabase.env)" >> "$GITHUB_ENV"
+          echo "SUPABASE_SECRET_KEY=$(awk -F= '/^SERVICE_ROLE_KEY=/{gsub(/"/,"",$2); print $2}' /tmp/supabase.env)" >> "$GITHUB_ENV"
+      - name: Build and start API
+        run: |
+          npm run build
+          npm start > /tmp/vantoo-next.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl --fail http://127.0.0.1:3000/api/products?limit=1 && break
+            sleep 2
+          done
+        env:
+          PLATFORM_ENABLED: "false"
+          RATE_LIMIT_MEMORY_FALLBACK: "true"
+          TRACKING_MEMORY_FALLBACK: "true"
+      - run: npm run mobile:smoke
+        env:
+          MOBILE_SMOKE_BASE_URL: http://127.0.0.1:3000
+          RATE_LIMIT_MEMORY_FALLBACK: "true"

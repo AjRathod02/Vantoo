@@ -1,12 +1,25 @@
-export default {
-  expo: {
-    name: "Vantoo Rider",
-    slug: "vantoo-rider",
-    version: "1.0.0",
-    orientation: "portrait",
-    scheme: "vantoo-rider",
-    userInterfaceStyle: "light",
-    ios: { supportsTablet: true, bundleIdentifier: "com.vantoo.rider" },
-    android: { package: "com.vantoo.rider" },
-  },
-};
+{
+  "expo": {
+    "name": "Vantoo Rider",
+    "slug": "vantoo-rider",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "vantoo-rider",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.vantoo.rider" },
+    "android": {
+      "package": "com.vantoo.rider",
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Vantoo Rider needs your location to update delivery tracking."
+        }
+      ]
+    ]
+  }
+}

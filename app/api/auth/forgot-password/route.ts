@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIpFromRequest(request);
-  const limited = rateLimit({
+  const limited = await rateLimit({
     key: `forgot-password:${ip}`,
     limit: 5,
     windowMs: 15 * 60 * 1000,
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         retryAfterSec: limited.retryAfterSec,
       },
       {
-        status: 429,
+        status: limited.reason === "unavailable" ? 503 : 429,
         headers: { "Retry-After": String(limited.retryAfterSec) },
       }
     );
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   const email = parsed.data.email.trim().toLowerCase();
-  const emailLimited = rateLimit({
+  const emailLimited = await rateLimit({
     key: `forgot-password-email:${email}`,
     limit: 3,
     windowMs: 15 * 60 * 1000,
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         retryAfterSec: emailLimited.retryAfterSec,
       },
       {
-        status: 429,
+        status: emailLimited.reason === "unavailable" ? 503 : 429,
         headers: { "Retry-After": String(emailLimited.retryAfterSec) },
       }
     );

@@ -1,6 +1,13 @@
 import type { Restaurant } from "@/lib/types";
 
 export const restaurants: Restaurant[] = [
+  { id: "r-kekiz-anvi", name: "Kekiz Cake Shop Anvi Foods", cuisine: ["Cakes", "Bakery", "Desserts"], rating: 0, reviews: 0, deliveryTime: "", priceForTwo: 0, image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=900&q=80" },
+  { id: "r-aroma", name: "Aroma", cuisine: ["Cafe", "Fast Food", "Beverages"], rating: 0, reviews: 0, deliveryTime: "", priceForTwo: 0, image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900&q=80" },
+  { id: "r-balaji-a-one-bhel", name: "Balaji A One Bhel", cuisine: ["Chaat", "Street Food", "Snacks"], rating: 0, reviews: 0, deliveryTime: "", priceForTwo: 0, image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=900&q=80" },
+  { id: "r-bhosle-kitchen-pure-veg", name: "Bhosle Kitchen Pure Veg", cuisine: ["Pure Veg", "North Indian", "Chinese"], rating: 0, reviews: 0, deliveryTime: "", priceForTwo: 0, image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=900&q=80" },
+  { id: "r-chai-vaai-cafe", name: "Chai Vaai Cafe", cuisine: ["Cafe", "Fast Food", "Beverages"], rating: 0, reviews: 0, deliveryTime: "", priceForTwo: 0, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900&q=80" },
+  { id: "r-datta-bhel", name: "Datta Bhel", cuisine: ["Bhel", "Chaat", "Street Food"], rating: 0, reviews: 0, deliveryTime: "", priceForTwo: 0, image: "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?w=900&q=80" },
+  { id: "r-happy-bites", name: "Happy Bites", cuisine: ["Desserts", "Waffles", "Beverages"], rating: 0, reviews: 0, deliveryTime: "", priceForTwo: 0, image: "https://images.unsplash.com/photo-1562376552-0d160a2f238d?w=900&q=80" },
   { id: "r-1", name: "Pizza Palace", cuisine: ["Pizza", "Italian"], rating: 4.5, reviews: 1240, deliveryTime: "25-30 min", priceForTwo: 500, image: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80", offer: "50% OFF up to ₹100", promoted: true },
   { id: "r-2", name: "Burger Hub", cuisine: ["Burgers", "Fast Food"], rating: 4.3, reviews: 980, deliveryTime: "20-25 min", priceForTwo: 350, image: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=600&q=80", offer: "Free delivery" },
   { id: "r-3", name: "Biryani House", cuisine: ["Biryani", "Mughlai"], rating: 4.6, reviews: 2100, deliveryTime: "30-35 min", priceForTwo: 600, image: "https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?w=600&q=80", offer: "20% OFF", promoted: true },

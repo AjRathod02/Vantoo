@@ -1,39 +1,66 @@
-# Firebase App Hosting — https://firebase.google.com/docs/app-hosting/configure
-# Copy values from .env or set them in Firebase Console → App Hosting → Environment.
-
-env:
-  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: AIzaSyBrsGFDm7rEX6Vrrh2a4E3JCi_q7fCz3kQ
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: vantoo-dd30e.firebaseapp.com
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: vantoo-dd30e
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: vantoo-dd30e.firebasestorage.app
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "222862866252"
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: 1:222862866252:web:04025efd2d7f9eb62581e9
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-    value: G-0HB0F1K6T4
-    availability:
-      - BUILD
-      - RUNTIME
+# Firebase App Hosting — https://firebase.google.com/docs/app-hosting/configure
+# Copy values from .env or set them in Firebase Console → App Hosting → Environment.
+
+runConfig:
+  minInstances: 1
+  maxInstances: 100
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024
+
+env:
+  - variable: PLATFORM_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
+  - variable: REDIS_URL
+    secret: REDIS_URL
+    availability:
+      - RUNTIME
+  - variable: REDIS_KEY_PREFIX
+    value: vantoo:staging
+    availability:
+      - RUNTIME
+  - variable: RATE_LIMIT_MEMORY_FALLBACK
+    value: "false"
+    availability:
+      - RUNTIME
+  - variable: TRACKING_MEMORY_FALLBACK
+    value: "false"
+    availability:
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyBrsGFDm7rEX6Vrrh2a4E3JCi_q7fCz3kQ
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: vantoo-dd30e.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: vantoo-dd30e
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: vantoo-dd30e.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "222862866252"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:222862866252:web:04025efd2d7f9eb62581e9
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    value: G-0HB0F1K6T4
+    availability:
+      - BUILD
+      - RUNTIME

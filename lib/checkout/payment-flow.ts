@@ -91,7 +91,11 @@ async function completeVerifiedPayment({
   router,
   onPlacingChange,
 }: PlaceOrderParams & {
-  verified: { razorpayOrderId: string; razorpayPaymentId: string };
+  verified: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    order: { id: string };
+  };
 }) {
   if (checkoutStore.checkoutReferenceId) {
     const existingKey = `completed:${checkoutStore.checkoutReferenceId}`;
@@ -103,21 +107,7 @@ async function completeVerifiedPayment({
     }
   }
 
-  const { order } = await createVantooOrder(
-    buildOrderPayload({
-      items,
-      totals,
-      payment,
-      address: selectedAddress,
-      service: items[0].product.service,
-      extra: {
-        paymentStatus: "paid",
-        razorpayOrderId: verified.razorpayOrderId,
-        razorpayPaymentId: verified.razorpayPaymentId,
-        idempotencyKey: checkoutStore.checkoutReferenceId ?? undefined,
-      },
-    })
-  );
+  const { order } = verified;
 
   if (checkoutStore.checkoutReferenceId && typeof window !== "undefined") {
     sessionStorage.setItem(
@@ -151,7 +141,7 @@ export async function placeOrder(params: PlaceOrderParams) {
   } = params;
 
   onPlacingChange(true);
-  checkoutStore.ensureCheckoutReference();
+  const checkoutReferenceId = checkoutStore.ensureCheckoutReference();
 
   try {
     if (payment === "cod") {
@@ -162,7 +152,10 @@ export async function placeOrder(params: PlaceOrderParams) {
           payment,
           address: selectedAddress,
           service: items[0].product.service,
-          extra: { paymentStatus: "pending" },
+          extra: {
+            paymentStatus: "pending",
+            idempotencyKey: checkoutReferenceId,
+          },
         })
       );
       saveAddressIfNew(selectedAddress, addressMode, savedAddresses, addAddress);
@@ -182,6 +175,10 @@ export async function placeOrder(params: PlaceOrderParams) {
           productId: i.product.id,
           quantity: i.quantity,
         })),
+        paymentMethod: payment,
+        address: selectedAddress,
+        service: items[0].product.service,
+        idempotencyKey: checkoutReferenceId,
       }),
     });
 
@@ -196,7 +193,13 @@ export async function placeOrder(params: PlaceOrderParams) {
       );
     }
 
-    const { orderId, keyId, amount } = await payRes.json();
+    const {
+      orderId,
+      vantooOrderId,
+      paymentAttemptId,
+      keyId,
+      amount,
+    } = await payRes.json();
 
     checkoutStore.setPendingPayment(null);
     checkoutStore.setVerifyingPayment(null);
@@ -231,13 +234,16 @@ export async function placeOrder(params: PlaceOrderParams) {
             credentials: "include",
             body: JSON.stringify({
               ...response,
-              expectedAmount: totals.total,
+              vantoo_order_id: vantooOrderId,
+              payment_attempt_id: paymentAttemptId,
             }),
           });
 
           if (!verifyRes.ok) {
             checkoutStore.setVerifyingPayment({
               razorpayOrderId: response.razorpay_order_id,
+              vantooOrderId,
+              paymentAttemptId,
               razorpayPaymentId: response.razorpay_payment_id,
               amount: totals.total,
               paymentMethod: payment,
@@ -256,6 +262,8 @@ export async function placeOrder(params: PlaceOrderParams) {
         } catch {
           checkoutStore.setVerifyingPayment({
             razorpayOrderId: response.razorpay_order_id,
+            vantooOrderId,
+            paymentAttemptId,
             razorpayPaymentId: response.razorpay_payment_id,
             amount: totals.total,
             paymentMethod: payment,
@@ -274,6 +282,8 @@ export async function placeOrder(params: PlaceOrderParams) {
         "Payment was declined or cancelled";
       checkoutStore.setPendingPayment({
         razorpayOrderId: orderId,
+        vantooOrderId,
+        paymentAttemptId,
         amount: totals.total,
         paymentMethod: payment,
         failedAt: new Date().toISOString(),
@@ -300,11 +310,17 @@ export async function verifyAndCompleteOrder(
 ): Promise<"success" | "failed" | "pending"> {
   const { razorpayOrderId, razorpayPaymentId, checkoutStore, router, onPlacingChange, ...rest } =
     params;
+  const paymentContext =
+    checkoutStore.verifyingPayment ?? checkoutStore.pendingPayment;
+  if (!paymentContext) return "pending";
+  const ownershipParams =
+    `&vantooOrderId=${encodeURIComponent(paymentContext.vantooOrderId)}` +
+    `&paymentAttemptId=${encodeURIComponent(paymentContext.paymentAttemptId)}`;
 
   if (razorpayPaymentId) {
     try {
       const statusRes = await fetch(
-        `/api/payments/razorpay/status?orderId=${encodeURIComponent(razorpayOrderId)}&paymentId=${encodeURIComponent(razorpayPaymentId)}`
+        `/api/payments/razorpay/status?orderId=${encodeURIComponent(razorpayOrderId)}&paymentId=${encodeURIComponent(razorpayPaymentId)}${ownershipParams}`
       );
       if (statusRes.ok) {
         const status = await statusRes.json();
@@ -317,6 +333,7 @@ export async function verifyAndCompleteOrder(
             verified: {
               razorpayOrderId: status.razorpayOrderId,
               razorpayPaymentId: status.razorpayPaymentId,
+              order: status.order,
             },
           });
           return "success";
@@ -324,6 +341,8 @@ export async function verifyAndCompleteOrder(
         if (status.status === "failed") {
           checkoutStore.setPendingPayment({
             razorpayOrderId,
+            vantooOrderId: paymentContext.vantooOrderId,
+            paymentAttemptId: paymentContext.paymentAttemptId,
             razorpayPaymentId,
             amount: rest.totals.total,
             paymentMethod: rest.payment,
@@ -340,7 +359,7 @@ export async function verifyAndCompleteOrder(
 
   try {
     const statusRes = await fetch(
-      `/api/payments/razorpay/status?orderId=${encodeURIComponent(razorpayOrderId)}`
+      `/api/payments/razorpay/status?orderId=${encodeURIComponent(razorpayOrderId)}${ownershipParams}`
     );
     if (!statusRes.ok) return "pending";
 
@@ -355,6 +374,7 @@ export async function verifyAndCompleteOrder(
         verified: {
           razorpayOrderId: status.razorpayOrderId,
           razorpayPaymentId: status.razorpayPaymentId,
+            order: status.order,
         },
       });
       return "success";
@@ -363,6 +383,8 @@ export async function verifyAndCompleteOrder(
     if (status.status === "failed") {
       checkoutStore.setPendingPayment({
         razorpayOrderId,
+        vantooOrderId: paymentContext.vantooOrderId,
+        paymentAttemptId: paymentContext.paymentAttemptId,
         amount: rest.totals.total,
         paymentMethod: rest.payment,
         failedAt: new Date().toISOString(),

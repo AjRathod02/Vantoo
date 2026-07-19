@@ -10,6 +10,14 @@ export function Rating({
   reviews?: number;
   className?: string;
 }) {
+  if (value <= 0) {
+    return (
+      <span className={cn("text-xs font-medium text-ink-soft", className)}>
+        New
+      </span>
+    );
+  }
+
   return (
     <span
       className={cn(

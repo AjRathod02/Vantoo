@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { Product, Restaurant } from "@/lib/types";
-import { categories as allCategories } from "@/lib/data/categories";
 import { api } from "@/lib/api";
 import { Chip } from "@/components/ui/Chip";
 import { ProductGrid, ProductGridSkeleton } from "@/components/ProductGrid";
@@ -18,8 +17,6 @@ export function FoodListing() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const categories = allCategories.filter((c) => c.service === "food");
-
   useEffect(() => {
     api.restaurants().then((d) => setRestaurants(d.restaurants));
   }, []);
@@ -28,21 +25,32 @@ export function FoodListing() {
     let active = true;
     setLoading(true);
     api
-      .products({ service: "food", category: category ?? undefined })
+      .products({ service: "food" })
       .then((data) => {
         if (!active) return;
-        const filtered = restaurantFilter
-          ? data.products.filter((p) => p.vendorId === restaurantFilter)
-          : data.products;
-        setProducts(filtered);
+        setProducts(data.products);
       })
+      .catch(() => active && setProducts([]))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [category, restaurantFilter]);
+  }, []);
+
+  useEffect(() => {
+    setCategory(null);
+  }, [restaurantFilter]);
 
   const activeRestaurant = restaurants.find((r) => r.id === restaurantFilter);
+  const restaurantProducts = restaurantFilter
+    ? products.filter((p) => p.vendorId === restaurantFilter)
+    : products;
+  const categories = Array.from(
+    new Set(restaurantProducts.map((product) => product.category).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+  const visibleProducts = category
+    ? restaurantProducts.filter((product) => product.category === category)
+    : restaurantProducts;
 
   return (
     <div className="container-page space-y-6 py-6">
@@ -74,21 +82,21 @@ export function FoodListing() {
           <Chip active={!category} onClick={() => setCategory(null)}>
             All
           </Chip>
-          {categories.map((c) => (
+          {categories.map((categoryName) => (
             <Chip
-              key={c.id}
-              active={category === c.name}
-              onClick={() => setCategory(c.name)}
+              key={categoryName}
+              active={category === categoryName}
+              onClick={() => setCategory(categoryName)}
             >
-              {c.name}
+              {categoryName}
             </Chip>
           ))}
         </div>
 
         {loading ? (
           <ProductGridSkeleton />
-        ) : products.length > 0 ? (
-          <ProductGrid products={products} />
+        ) : visibleProducts.length > 0 ? (
+          <ProductGrid products={visibleProducts} />
         ) : (
           <p className="py-16 text-center text-ink-muted">
             No dishes found for this selection.

@@ -1,96 +1,87 @@
 # Vantoo
 
-Vantoo is a full-stack super-app website for food delivery, groceries, medicine and online shopping, built with Next.js. It implements the complete Vantoo UI design as a responsive, installable web app backed by a mock API and data layer.
+Vantoo is a multi-client commerce and delivery platform for food, grocery,
+medicine, and e-commerce.
 
-## Tech Stack
+## Launch architecture
 
-- **Next.js 14** (App Router) + **TypeScript**
-- **Tailwind CSS** for styling and the design system
-- **Zustand** (with `localStorage` persistence) for cart, wishlist and auth state
-- **Zod** for API request validation
-- **Embla Carousel** for the home hero
-- **Lucide** icons
-- **PWA** support via `@ducanh2912/next-pwa` (installable, offline fallback)
+- Next.js 14 App Router BFF and customer/admin web applications
+- Supabase Auth and Postgres as the system of record
+- Managed Redis over TLS for shared rate limits and tracking Pub/Sub
+- Razorpay for online payments and refunds
+- Three native Expo/React Native apps: customer, vendor, and rider
 
-## Features
+The Fastify services under `platform/` remain build-tested but are disabled for
+the Supabase-only launch with `PLATFORM_ENABLED=false`.
 
-- Home page with hero carousel, service grid, categories, offers and top restaurants
-- Four service hubs: Food, Grocery, Medicine and E-commerce
-- E-commerce store with a server-backed filter sidebar (category, price, brand, rating, sort)
-- Product detail pages with related products
-- Unified search across all services
-- Cart with quantity controls, promo codes and live totals
-- Multi-step checkout (address, payment, review) that creates a real order via the API
-- Orders list with Ongoing / Delivered / Cancelled tabs
-- Live order tracking with an animated status timeline and a stylised delivery map
-- Mock phone-number login with a protected-route middleware
-- Profile and wallet pages
-- Wishlist, toast notifications, loading skeletons and empty states
-- Responsive layout with a mobile bottom navigation bar
-- Installable as a PWA with an offline fallback page
+## Setup
 
-## Getting Started
-
-Install dependencies and start the dev server:
+Use Node.js 22.13 or newer.
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open:
 
-### Other scripts
+- Customer web: `http://localhost:3000`
+- Admin portal: `http://localhost:3000/admin`
+
+See `PRODUCTION.md` for migration, secrets, staging, payment, and release-gate
+instructions.
+
+## Mobile applications
 
 ```bash
-npm run build   # production build (also generates the service worker)
-npm run start   # serve the production build
-npm run lint    # run ESLint
+npm run mobile:install
+npm run mobile:customer
+npm run mobile:vendor
+npm run mobile:rider
 ```
 
-> The PWA service worker is disabled in development and only active in production builds.
+Each app is a native Expo/React Native project and uses bearer-token mobile
+authentication. Set `EXPO_PUBLIC_API_URL` in each mobile app's local `.env`.
+See `apps/README.md`.
 
-## Deploy on Vercel
+## Quality gates
 
-1. Push this repository to GitHub.
-2. Go to [vercel.com](https://vercel.com) → **Add New** → **Project** → import the repo.
-3. Keep the defaults (Framework: **Next.js**, Build: `npm run build`).
-4. Under **Environment Variables**, add every key from [`.env.example`](.env.example) using your Firebase project values.
-5. Click **Deploy**.
+```bash
+npm run test
+npm run typecheck
+npm run lint
+npm run build
 
-Vercel will assign a URL like `https://your-project.vercel.app`. Pushes to the default branch redeploy automatically.
+STAGING_DB_TESTS=1 npm run test:db
+npm run redis:health
+npm run mobile:smoke
 
-> **Note:** `.env` is not committed. You must set the Firebase variables in the Vercel dashboard for Analytics to work in production.
-
-## Demo Notes
-
-This project is a UI/front-end demo with a mock backend:
-
-- **Data** lives in [`lib/data`](lib/data) and is served through API routes under [`app/api`](app/api).
-- **Orders** are kept in an in-memory store ([`lib/server/orderStore.ts`](lib/server/orderStore.ts)) for the lifetime of the server process. Order status advances automatically on a compressed demo timeline (Confirmed to Delivered in ~80 seconds).
-- **Login** accepts any phone number and sets a session cookie; social login is mocked.
-- **Promo codes**: try `SAVE10` (10% off) or `VANTOO20` (20% off).
-- **Payments** and the **map** are mocked (no Razorpay/Stripe or Google Maps).
-
-## Project Structure
-
-```
-app/                 # App Router pages, layouts and API routes
-  api/               # Mock REST endpoints (products, orders, auth, ...)
-components/          # UI primitives, layout and feature components
-  ui/                # Buttons, inputs, badges, etc.
-  layout/            # Navbar, SubNav, Footer, MobileNav
-lib/                 # Types, utils, mock data, Zustand stores
-  data/              # Seed data
-  stores/            # cart, wishlist, auth, toast
-  server/            # Server-side order store
-public/              # Manifest, icons, PWA assets
+npm run build --prefix platform
+npm run test --prefix platform
 ```
 
-## Possible Extensions
+The database suite covers RPC privileges, idempotency replay/conflicts, and a
+concurrent last-stock race. Staging load profiles are in
+`tests/load/staging.js`; they do not call Razorpay mutation endpoints.
 
-- Replace the JSON seed data with PostgreSQL + Prisma
-- Real payment gateway (Razorpay / Stripe)
-- Google Maps / Mapbox with WebSocket live tracking
-- SMS OTP authentication
-- Vendor / admin dashboard
+## Repository layout
+
+```text
+app/                    Next.js pages and API routes
+apps/customer-mobile/   Customer Expo app
+apps/vendor-mobile/     Vendor Expo app
+apps/rider-mobile/      Rider Expo app
+lib/                    Commerce, auth, Redis, payment, and server services
+supabase/migrations/    Ordered Supabase CLI migrations
+tests/                  Unit, database, and staged load tests
+platform/               Disabled-for-launch Fastify services
+```
+
+## Current release status
+
+Production is not approved yet. The transactional order/catalog/database
+changes are applied to staging and automated database/build gates pass.
+Managed Redis connectivity, the complete Razorpay webhook/UI matrix, staged
+load results, and browser/device QA still require recorded evidence before
+production migration.

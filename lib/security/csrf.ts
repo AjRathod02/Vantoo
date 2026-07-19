@@ -16,6 +16,14 @@ export function isAllowedMutatingOrigin(request: NextRequest): boolean {
   if (pathname.startsWith("/api/setup/")) return true;
   if (pathname.startsWith("/api/payments/razorpay/webhook")) return true;
   if (pathname.includes("/stream")) return true;
+  // Mobile token exchange does not send browser Origin
+  if (pathname.startsWith("/api/auth/mobile/")) return true;
+
+  // Native apps authenticate with Bearer tokens (no Origin header)
+  const authorization = request.headers.get("authorization");
+  if (authorization?.startsWith("Bearer ") && authorization.length > 27) {
+    return true;
+  }
 
   const origin = request.headers.get("origin");
   const referer = request.headers.get("referer");

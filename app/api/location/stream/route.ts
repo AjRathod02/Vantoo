@@ -8,6 +8,7 @@ import {
   subscribeUserLocation,
 } from "@/lib/tracking/broadcaster";
 import type { LocationRole, UserLocationRecord } from "@/lib/types";
+import { clientIpFromRequest, rateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,16 @@ export async function GET(request: Request) {
   const user = await getSessionUser();
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
+  }
+  const limited = await rateLimit({
+    key: `location-sse:${user.id}:${clientIpFromRequest(request)}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return new Response("Location stream temporarily limited", {
+      status: limited.reason === "unavailable" ? 503 : 429,
+    });
   }
 
   const { searchParams } = new URL(request.url);
@@ -51,7 +62,7 @@ export async function GET(request: Request) {
 
       if (scope === "admin") {
         initial.forEach(send);
-        unsubscribe = subscribeAdminLocations((record) => {
+        unsubscribe = await subscribeAdminLocations((record) => {
           if (role && record.role !== role) return;
           if (city && record.city !== city) return;
           send(record);
@@ -63,11 +74,11 @@ export async function GET(request: Request) {
         }
         const existing = initial.find((r) => r.userId === userId);
         if (existing) send(existing);
-        unsubscribe = subscribeUserLocation(userId, send);
+        unsubscribe = await subscribeUserLocation(userId, send);
       } else {
         const mine = initial.find((r) => r.userId === user.id);
         if (mine) send(mine);
-        unsubscribe = subscribeUserLocation(user.id, send);
+        unsubscribe = await subscribeUserLocation(user.id, send);
       }
 
       heartbeat = setInterval(() => {

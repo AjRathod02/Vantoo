@@ -7,6 +7,7 @@ import {
   upsertUserLocation,
 } from "@/lib/server/userLocations";
 import type { LocationRole } from "@/lib/types";
+import { clientIpFromRequest, rateLimit } from "@/lib/security/rate-limit";
 
 const bodySchema = z.object({
   latitude: z.number(),
@@ -34,11 +35,11 @@ function resolveRole(
   // Rider/vendor elevation is handled only when session profile role matches.
   // Customer sessions cannot spoof onto admin location maps.
   if (requested === "rider" || headerRole === "rider") {
-    if (sessionRole === "admin") return "rider";
+    if (sessionRole === "rider") return "rider";
     return "customer";
   }
   if (requested === "vendor" || headerRole === "vendor") {
-    if (sessionRole === "admin") return "vendor";
+    if (sessionRole === "vendor") return "vendor";
     return "customer";
   }
   return "customer";
@@ -48,6 +49,17 @@ export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const limited = await rateLimit({
+    key: `location-write:${user.id}:${clientIpFromRequest(request)}`,
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Location updates are temporarily limited." },
+      { status: limited.reason === "unavailable" ? 503 : 429 }
+    );
   }
 
   let body: z.infer<typeof bodySchema>;
@@ -59,7 +71,7 @@ export async function POST(request: Request) {
   const portalRole = request.headers.get("x-vantoo-portal") as LocationRole | null;
   const role = resolveRole(body.role, user.role, portalRole);
 
-  const record = upsertUserLocation(
+  const record = await upsertUserLocation(
     deviceToRecord(
       user.id,
       role,
@@ -97,6 +109,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const location = getUserLocation(userId);
+  const location = await getUserLocation(userId);
   return NextResponse.json({ location });
 }

@@ -1,5 +1,6 @@
 # dependencies
 /node_modules
+**/node_modules/
 /.pnp
 .pnp.js
 
@@ -9,6 +10,8 @@
 
 # production
 /build
+**/dist/
+**/.vite/
 
 # pwa generated
 /public/sw.js
@@ -34,3 +37,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# expo
+apps/*/.expo/
+apps/*/dist/
+apps/*/.env
+.expo/
+supabase/.temp/

@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/auth";
 import { adminErrorResponse } from "@/lib/admin/auth";
-import { updateOrder } from "@/lib/server/orders";
+import {
+  getOrder,
+  transitionOrderStatus,
+  updateOrderTracking,
+} from "@/lib/server/orders";
 import type { OrderStatus } from "@/lib/types";
 import { z } from "zod";
 
@@ -27,7 +31,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     const body = await request.json();
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) {
@@ -35,22 +39,40 @@ export async function PATCH(
     }
 
     const patch = parsed.data;
-    const order = await updateOrder(params.id, {
-      status: patch.status as OrderStatus | undefined,
-      refundStatus: patch.refundStatus,
-      refundAmount: patch.refundAmount,
-      paymentStatus:
-        patch.refundStatus === "completed" ? "refunded" : undefined,
-      tracking: {
+    if (patch.refundStatus != null || patch.refundAmount != null) {
+      return NextResponse.json(
+        { error: "Use the refunds endpoint for refund state changes" },
+        { status: 409 }
+      );
+    }
+
+    let order = await getOrder(params.id);
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    if (patch.status && patch.status !== order.status) {
+      order = await transitionOrderStatus({
+        orderId: params.id,
+        nextStatus: patch.status as OrderStatus,
+        actorId: admin.id,
+        actorRole: "admin",
+      });
+    }
+
+    if (patch.riderLat != null && patch.riderLng != null) {
+      await updateOrderTracking(
+        params.id,
+        {
         riderName: patch.riderName,
         riderPhone: patch.riderPhone,
         riderLat: patch.riderLat,
         riderLng: patch.riderLng,
-      },
-    });
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+        },
+        admin.id,
+        "admin"
+      );
+      order = (await getOrder(params.id)) ?? order;
     }
 
     return NextResponse.json({ order });

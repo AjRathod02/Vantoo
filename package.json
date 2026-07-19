@@ -7,6 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:db": "node --test tests/database/order-rpcs.test.mjs",
+    "redis:health": "node scripts/redis-health.mjs",
+    "launch:config": "node scripts/launch-config-check.mjs",
+    "load:staging": "k6 run tests/load/staging.js",
     "db:migrate": "node scripts/migrate.mjs",
     "db:migrate:all": "node scripts/migrate-all.mjs",
     "admin:create": "node scripts/create-super-admin.mjs",
@@ -28,6 +34,14 @@
     "platform:infra:up": "docker compose -f platform/docker/docker-compose.yml up -d postgres redis",
     "platform:test": "npm run test --prefix platform",
     "dev:admin": "npm run dev --prefix apps/admin-web",
+    "mobile:customer": "npm run start --prefix apps/customer-mobile",
+    "mobile:vendor": "npm run start --prefix apps/vendor-mobile",
+    "mobile:rider": "npm run start --prefix apps/rider-mobile",
+    "mobile:customer:install": "npm install --prefix apps/customer-mobile",
+    "mobile:vendor:install": "npm install --prefix apps/vendor-mobile",
+    "mobile:rider:install": "npm install --prefix apps/rider-mobile",
+    "mobile:install": "npm run mobile:customer:install && npm run mobile:vendor:install && npm run mobile:rider:install",
+    "mobile:smoke": "node scripts/mobile-smoke.mjs",
     "build:platform": "npm run build --prefix platform",
     "build:all": "npm run build:platform && npm run build",
     "deploy": "firebase deploy --only apphosting:vantoo"
@@ -42,6 +56,7 @@
     "embla-carousel-react": "^8.3.0",
     "firebase": "^12.15.0",
     "framer-motion": "^12.42.2",
+    "ioredis": "^5.11.1",
     "jose": "^6.2.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.453.0",
@@ -71,7 +86,9 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.15",
     "postcss": "^8.4.47",
+    "supabase": "^2.109.1",
     "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.10"
   }
 }

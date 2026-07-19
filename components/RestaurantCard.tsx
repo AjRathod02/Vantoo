@@ -81,18 +81,26 @@ export function RestaurantCard({
           <h3 className="line-clamp-1 text-sm font-semibold text-ink">
             {restaurant.name}
           </h3>
-          <Badge tone="green">{restaurant.rating.toFixed(1)}</Badge>
+          <Badge tone="green">
+            {restaurant.rating > 0 ? restaurant.rating.toFixed(1) : "New"}
+          </Badge>
         </div>
         <p className="line-clamp-1 text-xs text-ink-soft">
           {restaurant.cuisine.join(", ")}
         </p>
-        <div className="mt-2 flex items-center gap-3 text-xs text-ink-muted">
-          <span className="inline-flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            {restaurant.deliveryTime}
-          </span>
-          <span>{formatINR(restaurant.priceForTwo)} for two</span>
-        </div>
+        {(restaurant.deliveryTime || restaurant.priceForTwo > 0) && (
+          <div className="mt-2 flex items-center gap-3 text-xs text-ink-muted">
+            {restaurant.deliveryTime && (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                {restaurant.deliveryTime}
+              </span>
+            )}
+            {restaurant.priceForTwo > 0 && (
+              <span>{formatINR(restaurant.priceForTwo)} for two</span>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );

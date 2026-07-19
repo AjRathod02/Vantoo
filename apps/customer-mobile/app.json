@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Vantoo",
+    "slug": "vantoo-customer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "vantoo",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vantoo.customer"
+    },
+    "android": {
+      "package": "com.vantoo.customer",
+      "adaptiveIcon": {
+        "backgroundColor": "#FF6B00"
+      }
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}

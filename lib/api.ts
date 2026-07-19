@@ -15,6 +15,8 @@ export interface ProductQuery {
   maxPrice?: number;
   minRating?: number;
   sort?: string;
+  page?: number;
+  limit?: number;
 }
 
 export function buildProductUrl(query: ProductQuery): string {
@@ -28,12 +30,21 @@ export function buildProductUrl(query: ProductQuery): string {
     params.set("maxPrice", String(query.maxPrice));
   if (query.minRating) params.set("minRating", String(query.minRating));
   if (query.sort) params.set("sort", query.sort);
+  if (query.page) params.set("page", String(query.page));
+  if (query.limit) params.set("limit", String(query.limit));
   return `/api/products?${params.toString()}`;
 }
 
 export const api = {
   products: (query: ProductQuery = {}) =>
-    getJSON<{ products: Product[]; count: number }>(buildProductUrl(query)),
+    getJSON<{
+      products: Product[];
+      count: number;
+      total: number;
+      page: number;
+      limit: number;
+      hasMore: boolean;
+    }>(buildProductUrl(query)),
   product: (id: string) =>
     getJSON<{ product: Product; related: Product[] }>(`/api/products/${id}`),
   restaurants: () => getJSON<{ restaurants: Restaurant[] }>("/api/restaurants"),

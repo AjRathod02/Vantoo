@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIpFromRequest(request);
-  const limited = rateLimit({
+  const limited = await rateLimit({
     key: `reset-password:${ip}`,
     limit: 10,
     windowMs: 15 * 60 * 1000,
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         retryAfterSec: limited.retryAfterSec,
       },
       {
-        status: 429,
+        status: limited.reason === "unavailable" ? 503 : 429,
         headers: { "Retry-After": String(limited.retryAfterSec) },
       }
     );

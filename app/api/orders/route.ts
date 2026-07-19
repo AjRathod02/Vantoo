@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/server/auth";
-import { listOrders, createOrder } from "@/lib/server/orders";
-import { priceOrderItems } from "@/lib/payments/server-pricing";
-import { verifyCapturedRazorpayPayment } from "@/lib/payments/verify-payment";
+import { listOrders, prepareOrder } from "@/lib/server/orders";
+import { clientIpFromRequest, rateLimit } from "@/lib/security/rate-limit";
 
 const addressSchema = z.object({
   id: z.string(),
@@ -40,7 +40,7 @@ const orderSchema = z.object({
   razorpaySignature: z.string().optional(),
   address: addressSchema,
   service: z.enum(["food", "grocery", "medicine", "ecommerce", "local_shop"]),
-  idempotencyKey: z.string().optional(),
+  idempotencyKey: z.string().min(16).max(200),
 });
 
 export async function GET() {
@@ -58,6 +58,17 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Login required" }, { status: 401 });
   }
+  const limited = await rateLimit({
+    key: `order-create:${user.id}:${clientIpFromRequest(request)}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Order creation is temporarily limited." },
+      { status: limited.reason === "unavailable" ? 503 : 429 }
+    );
+  }
 
   const body = await request.json();
   const parsed = orderSchema.safeParse(body);
@@ -68,77 +79,41 @@ export async function POST(request: Request) {
     );
   }
 
-  const {
-    paymentMethod,
-    razorpayOrderId,
-    razorpayPaymentId,
-    razorpaySignature,
-    idempotencyKey,
-  } = parsed.data;
-
-  let priced;
-  try {
-    priced = await priceOrderItems(
-      parsed.data.items.map((i) => ({
-        productId: i.productId,
-        quantity: i.quantity,
-        variantId: i.variantId,
-      }))
-    );
-  } catch (e) {
+  if (parsed.data.paymentMethod !== "cod") {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Unable to price order" },
-      { status: 400 }
+      { error: "Online orders must use the Razorpay payment-intent flow" },
+      { status: 409 }
     );
   }
 
-  let paymentStatus: "pending" | "paid" = "pending";
-
-  if (paymentMethod === "cod") {
-    paymentStatus = "pending";
-  } else {
-    if (!razorpayOrderId || !razorpayPaymentId) {
-      return NextResponse.json(
-        { error: "Payment verification required for online payments" },
-        { status: 400 }
-      );
-    }
-
-    try {
-      await verifyCapturedRazorpayPayment({
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
-        expectedAmountInr: priced.total,
-        userId: user.id,
-      });
-      paymentStatus = "paid";
-    } catch (e) {
-      return NextResponse.json(
-        { error: e instanceof Error ? e.message : "Payment verification failed" },
-        { status: 400 }
-      );
-    }
-  }
-
   try {
-    const order = await createOrder(user.id, {
-      items: priced.items,
+    const requestHash = createHash("sha256")
+      .update(
+        JSON.stringify({
+          items: parsed.data.items.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId ?? null,
+            quantity: item.quantity,
+          })),
+          paymentMethod: parsed.data.paymentMethod,
+          address: parsed.data.address,
+          service: parsed.data.service,
+        })
+      )
+      .digest("hex");
+    const result = await prepareOrder({
+      userId: user.id,
+      items: parsed.data.items,
       service: parsed.data.service,
       address: parsed.data.address,
-      paymentMethod,
-      paymentStatus,
-      razorpayOrderId,
-      razorpayPaymentId,
-      idempotencyKey,
-      // Server-authoritative totals (platform path may recompute)
-      subtotal: priced.subtotal,
-      deliveryFee: priced.deliveryFee,
-      tax: priced.tax,
-      discount: priced.discount,
-      total: priced.total,
-    } as Parameters<typeof createOrder>[1]);
-    return NextResponse.json({ order }, { status: 201 });
+      paymentMethod: "cod",
+      idempotencyKey: parsed.data.idempotencyKey,
+      requestHash,
+    });
+    return NextResponse.json(
+      { order: result.order, replayed: result.replayed },
+      { status: result.replayed ? 200 : 201 }
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to create order";
     return NextResponse.json({ error: message }, { status: 400 });

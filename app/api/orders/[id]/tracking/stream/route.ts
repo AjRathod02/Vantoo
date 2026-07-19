@@ -1,21 +1,31 @@
 import { getSessionUser } from "@/lib/server/auth";
 import { getOrder } from "@/lib/server/orders";
-import { getOrder as getMemoryOrder } from "@/lib/server/orderStore";
 import { subscribeRiderLocation } from "@/lib/tracking/broadcaster";
 import type { RiderLocationUpdate } from "@/lib/types";
+import { clientIpFromRequest, rateLimit } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   const user = await getSessionUser();
   if (!user) {
     return new Response("Unauthorized", { status: 401 });
   }
+  const limited = await rateLimit({
+    key: `tracking-sse:${user.id}:${clientIpFromRequest(request)}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return new Response("Tracking stream temporarily limited", {
+      status: limited.reason === "unavailable" ? 503 : 429,
+    });
+  }
 
-  const order = (await getOrder(params.id, user.id)) ?? getMemoryOrder(params.id);
+  const order = await getOrder(params.id, user.id);
   if (!order) {
     return new Response("Order not found", { status: 404 });
   }
@@ -32,7 +42,7 @@ export async function GET(
   let unsubscribe: (() => void) | undefined;
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       const send = (data: RiderLocationUpdate) => {
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
@@ -56,7 +66,12 @@ export async function GET(
         });
       }
 
-      unsubscribe = subscribeRiderLocation(params.id, send);
+      try {
+        unsubscribe = await subscribeRiderLocation(params.id, send);
+      } catch (error) {
+        controller.error(error);
+        return;
+      }
 
       heartbeat = setInterval(() => {
         controller.enqueue(encoder.encode(": heartbeat\n\n"));

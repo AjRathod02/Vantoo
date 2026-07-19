@@ -56,7 +56,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
   const product = await getProduct(params.id);
   if (!product) notFound();
 
-  const allRelated = await listProducts({ service: product.service });
+  const allRelated = await listProducts({ service: product.service, limit: 8 });
   const related = allRelated.filter((p) => p.id !== product.id).slice(0, 4);
 
   const discount =

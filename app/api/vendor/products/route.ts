@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/server/auth";
 import { isPlatformEnabled } from "@/lib/platform/client";
+import { listProductsPage } from "@/lib/server/products";
 import {
   listVendorProducts,
   createVendorProduct,
@@ -10,7 +11,13 @@ import {
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isPlatformEnabled()) return NextResponse.json({ products: [] });
+  if (!isPlatformEnabled()) {
+    const result = await listProductsPage(
+      { vendorId: user.id, limit: 50 },
+      { cache: false }
+    );
+    return NextResponse.json(result);
+  }
 
   try {
     const products = await listVendorProducts(user.id);

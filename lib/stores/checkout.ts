@@ -10,6 +10,8 @@ import {
 
 export interface PendingPayment {
   razorpayOrderId: string;
+  vantooOrderId: string;
+  paymentAttemptId: string;
   amount: number;
   paymentMethod: PaymentMethod;
   failedAt: string;
@@ -19,6 +21,8 @@ export interface PendingPayment {
 
 export interface VerifyingPayment {
   razorpayOrderId: string;
+  vantooOrderId: string;
+  paymentAttemptId: string;
   razorpayPaymentId?: string;
   amount: number;
   paymentMethod: PaymentMethod;
@@ -69,7 +73,7 @@ export const useCheckoutStore = create<CheckoutState>()(
       ensureCheckoutReference: () => {
         const existing = get().checkoutReferenceId;
         if (existing) return existing;
-        const id = `CHK-${Date.now().toString(36).toUpperCase()}`;
+        const id = `CHK-${crypto.randomUUID()}`;
         set({ checkoutReferenceId: id });
         return id;
       },

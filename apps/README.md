@@ -1,100 +1,57 @@
-# Vantoo Commerce Platform
+# Vantoo client applications
 
-Four independent client applications share one centralized backend.
+Four separate clients share one Next.js BFF backed by Supabase.
 
-## Applications
+| App | Location | How to run | API namespace |
+|-----|----------|------------|--------------|
+| **Customer Web** (PWA) | Repository root `app/` | `npm run dev` → :3000 | `/api/*` |
+| **Customer Mobile** | `apps/customer-mobile/` | `npm run mobile:customer` | `/api/auth/mobile/*`, `/api/products`, `/api/orders` |
+| **Vendor Mobile** | `apps/vendor-mobile/` | `npm run mobile:vendor` | `/api/auth/mobile/*`, `/api/vendor/*` |
+| **Rider Mobile** | `apps/rider-mobile/` | `npm run mobile:rider` | `/api/auth/mobile/*`, `/api/rider/*` |
+| **Admin Web** | Root `/admin` (primary) + `apps/admin-web` (:3001) | `npm run dev` / `npm run dev:admin` | `/api/admin/*` |
 
-| App | Location | Port | Status |
-|-----|----------|------|--------|
-| **Customer Web** (PWA) | Repository root (`app/`) | 3000 | Active |
-| **Customer Mobile** | `apps/customer-mobile/` | — | Scaffold |
-| **Vendor Mobile** | `apps/vendor-mobile/` | — | Scaffold |
-| **Rider Mobile** | `apps/rider-mobile/` | — | Scaffold |
-| **Admin Web** | `apps/admin-web/` | 3001 | Active |
-
-### Customer Web + Mobile
-- Shopping, grocery, food, medicine, e-commerce
-- Orders, wallet, profile, wishlist, referrals (planned)
-- Same `/api/customer/*` APIs for web and mobile sync
-
-### Vendor Mobile (separate login)
-- Store registration, KYC, products, inventory, orders
-- Uses `/api/vendor/*` only — no customer or admin data access
-
-### Rider Mobile (separate login)
-- Registration, KYC, online/offline, deliveries, earnings
-- Uses `/api/rider/*` only
-
-### Admin Web (separate login)
-- Dashboard, users, vendors, riders, orders, products, reports
-- Uses `/api/admin/*` only
-- Runs independently on port 3001
-
-## Backend (`platform/`)
-
-Single modular backend — **not** separate backends per app.
+## Connectivity model
 
 ```
-platform/
-├── packages/shared/          # Types, validation, RBAC
-├── services/
-│   ├── auth/                 # :4001 — OTP, JWT, sessions, RBAC
-│   ├── catalog/              # :4002 — products, categories, inventory
-│   ├── order/                # :4003 — order lifecycle
-│   ├── vendor/               # :4004 — vendor onboarding, stores
-│   ├── rider/                # :4005 — rider onboarding, deliveries
-│   ├── notification/         # :4009 — push, SMS, email
-│   └── tracking/             # :4010 — live GPS tracking
-├── database/migrations/
-└── docker/
+Customer / Vendor / Rider Expo apps
+        │  Authorization: Bearer <supabase_access_token>
+        ▼
+Next.js BFF (port 3000)
+        ├── Supabase Auth + DB (customer identity)
+        ├── Razorpay (payments)
+        └── managed Redis (rate limits + tracking fanout)
 ```
 
-### Planned services (Phase 6+)
-payments, wallet, referral, chat, analytics, recommendation-ai, reports
+Mobile login returns access + refresh tokens from `/api/auth/mobile/login`.
+Protected routes accept either browser cookies (web) or Bearer tokens (native).
 
-## API Structure
-
-| Namespace | Consumers | Examples |
-|-----------|-----------|----------|
-| `/api/auth/*` | All apps | login, signup, me |
-| `/api/customer/*` | Customer web + mobile | products, orders, payments |
-| `/api/vendor/*` | Vendor mobile | me, apply, products, orders |
-| `/api/rider/*` | Rider mobile | me, apply, deliveries, earnings |
-| `/api/admin/*` | Admin web | vendors, riders, orders, products |
-
-Customer routes are rewritten from `/api/customer/*` → existing handlers in `next.config.mjs`.
-
-## Development
+## First-time mobile setup
 
 ```bash
-# Customer web (port 3000)
+# Terminal 1 — API
 npm run dev
 
-# Admin web (port 3001)
-npm run dev:admin
-
-# All backend services
-npm run platform:dev:all
-# or Docker: npm run platform:docker:up
-
-# Build everything
-npm run build:all
+# Terminal 2 — install + run one app
+npm run mobile:customer:install   # or vendor / rider
+npm run mobile:customer
 ```
 
-## Authentication
+On a physical phone, set `EXPO_PUBLIC_API_URL=http://<your-lan-ip>:3000` in each app `.env`.
+Node.js 22.13+ is required by Expo SDK 57.
 
-| Role | Login | Token | APIs |
-|------|-------|-------|------|
-| Customer | `/login` | Supabase session (→ platform JWT planned) | `/api/customer/*` |
-| Vendor | Vendor mobile | Platform JWT (planned) | `/api/vendor/*` |
-| Rider | Rider mobile | Platform JWT (planned) | `/api/rider/*` |
-| Admin | Admin web | Supabase session + `profiles.role=admin` | `/api/admin/*` |
+## Smoke test
 
-Each role has isolated access. Vendor/rider/admin cannot access customer-only data without authorization.
+```bash
+node scripts/mobile-smoke.mjs
+# optional authenticated check:
+# MOBILE_SMOKE_EMAIL=you@example.com MOBILE_SMOKE_PASSWORD=secret node scripts/mobile-smoke.mjs
+```
 
-## Migration Path
+## Status
 
-1. **Now**: Customer web at repo root; admin at `apps/admin-web`; mobile scaffolds ready
-2. **Next**: Wire platform auth-service for vendor/rider mobile JWT
-3. **Then**: Extract customer web to `apps/customer-web` if needed
-4. **Future**: API gateway in front of microservices
+- Customer mobile: catalog, auth, cart, COD checkout, orders/tracking screens.
+- Vendor / Rider mobile: auth, dashboard, apply, orders/deliveries. Launch
+  reads and tracking use Supabase; several vendor/rider management screens are
+  still partial and require device QA.
+- Admin: use primary portal at `http://localhost:3000/admin` (full RBAC). `apps/admin-web` proxies to the same API on :3001.
+- All three Expo projects pass TypeScript and Expo Doctor checks.

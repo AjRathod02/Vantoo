@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { listProducts } from "@/lib/server/products";
-import type { Product } from "@/lib/types";
+import { listProductsPage } from "@/lib/server/products";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,23 +7,24 @@ export async function GET(request: Request) {
   const category = searchParams.get("category") ?? undefined;
   const q = searchParams.get("q") ?? undefined;
   const brands = searchParams.get("brands")?.split(",").filter(Boolean);
-  const minPrice = Number(searchParams.get("minPrice")) || 0;
-  const maxPrice = Number(searchParams.get("maxPrice")) || Infinity;
-  const minRating = Number(searchParams.get("minRating")) || 0;
-  const sort = searchParams.get("sort");
+  const numberParam = (name: string) => {
+    const value = searchParams.get(name);
+    if (value == null || value === "") return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+  const result = await listProductsPage({
+    service,
+    category,
+    q,
+    brands,
+    minPrice: numberParam("minPrice"),
+    maxPrice: numberParam("maxPrice"),
+    minRating: numberParam("minRating"),
+    sort: searchParams.get("sort") ?? undefined,
+    page: numberParam("page"),
+    limit: numberParam("limit"),
+  });
 
-  let result: Product[] = await listProducts({ service, category, q });
-
-  if (brands && brands.length > 0) {
-    result = result.filter((p) => brands.includes(p.brand));
-  }
-  result = result.filter(
-    (p) => p.price >= minPrice && p.price <= maxPrice && p.rating >= minRating
-  );
-
-  if (sort === "price-asc") result = [...result].sort((a, b) => a.price - b.price);
-  else if (sort === "price-desc") result = [...result].sort((a, b) => b.price - a.price);
-  else if (sort === "rating") result = [...result].sort((a, b) => b.rating - a.rating);
-
-  return NextResponse.json({ products: result, count: result.length });
+  return NextResponse.json(result);
 }

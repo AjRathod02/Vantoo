@@ -37,7 +37,14 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
         <p className="text-sm text-gray-500">
-          Separate admin portal — proxies API to customer web backend on port 3000.
+          Lightweight admin shell on :3001 that proxies{" "}
+          <code className="text-xs">/api/*</code> to the Next.js backend (
+          {process.env.API_BASE_URL ?? "http://localhost:3000"}). For full RBAC,
+          login, refunds, and live tracking use the primary portal at{" "}
+          <a className="text-orange-600 underline" href="http://localhost:3000/admin">
+            localhost:3000/admin
+          </a>
+          .
         </p>
       </div>
 

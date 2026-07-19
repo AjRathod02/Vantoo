@@ -1,26 +1,26 @@
-# Vantoo Customer Mobile App
+# Vantoo Customer Mobile
 
-Android + iOS app sharing the same backend as customer web.
-
-## API
-Uses `/api/customer/*` namespace (same as customer web PWA):
-
-```
-GET  /api/customer/products
-GET  /api/customer/orders
-POST /api/customer/orders
-GET  /api/customer/offers
-```
-
-Set `EXPO_PUBLIC_API_URL=http://localhost:3000`.
+Native Android + iOS Expo app for customers. Talks to the Next.js API with bearer tokens.
 
 ## Setup
 
 ```bash
 cd apps/customer-mobile
 npm install
+cp .env.example .env
 npx expo start
 ```
 
-## Status
-Scaffold — feature parity with customer web is planned for Phase 2.
+Set `EXPO_PUBLIC_API_URL` to your machine LAN IP when testing on a physical device
+(for example `http://192.168.1.20:3000`), not only `localhost`.
+
+## Flows
+
+- Sign in via `/api/auth/mobile/login`
+- Catalog via `/api/customer/products`
+- COD checkout via `/api/customer/orders`
+- Orders + tracking via `/api/customer/orders/*`
+
+## Store builds
+
+Use EAS Build later for Play Store / App Store binaries. Dev testing: Expo Go or a development build.

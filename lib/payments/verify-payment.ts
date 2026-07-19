@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import { getRazorpay, verifyRazorpaySignature } from "@/lib/razorpay";
 import { hasAdminClient, createAdminClient } from "@/utils/supabase/admin";
-import { listOrders as listMemoryOrders } from "@/lib/server/orderStore";
 
 export function verifyRazorpaySignatureSafe(
   orderId: string,
@@ -32,33 +31,28 @@ export async function findOrderByRazorpayPaymentId(
 ): Promise<{ id: string; userId?: string } | null> {
   if (!paymentId) return null;
 
-  if (hasAdminClient()) {
-    try {
-      const supabase = createAdminClient();
-      const { data } = await supabase
-        .from("orders")
-        .select("id, user_id")
-        .eq("razorpay_payment_id", paymentId)
-        .maybeSingle();
-      if (data) {
-        return {
-          id: data.id as string,
-          userId: (data.user_id as string | null) ?? undefined,
-        };
-      }
-    } catch (e) {
-      console.error("findOrderByRazorpayPaymentId:", e);
-    }
+  if (!hasAdminClient()) {
+    throw new Error("Durable payment database is not configured");
   }
-
-  const memory = listMemoryOrders().find((o) => o.razorpayPaymentId === paymentId);
-  if (memory) return { id: memory.id, userId: memory.userId };
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, user_id")
+    .eq("razorpay_payment_id", paymentId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (data) {
+    return {
+      id: data.id as string,
+      userId: (data.user_id as string | null) ?? undefined,
+    };
+  }
   return null;
 }
 
-export async function assertPaymentUnused(paymentId: string) {
+export async function assertPaymentUnused(paymentId: string, allowedOrderId?: string) {
   const existing = await findOrderByRazorpayPaymentId(paymentId);
-  if (existing) {
+  if (existing && existing.id !== allowedOrderId) {
     throw new Error("Payment already used for another order");
   }
 }
@@ -72,6 +66,7 @@ export async function verifyCapturedRazorpayPayment(opts: {
   razorpaySignature?: string;
   expectedAmountInr: number;
   userId: string;
+  vantooOrderId?: string;
 }): Promise<{ razorpayOrderId: string; razorpayPaymentId: string; amountInr: number }> {
   const {
     razorpayOrderId,
@@ -90,7 +85,7 @@ export async function verifyCapturedRazorpayPayment(opts: {
     if (!ok) throw new Error("Invalid payment signature");
   }
 
-  await assertPaymentUnused(razorpayPaymentId);
+  await assertPaymentUnused(razorpayPaymentId, opts.vantooOrderId);
 
   const razorpay = getRazorpay();
   const payment = await razorpay.payments.fetch(razorpayPaymentId);

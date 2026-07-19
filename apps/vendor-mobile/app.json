@@ -1,12 +1,13 @@
-export default {
-  expo: {
-    name: "Vantoo Vendor",
-    slug: "vantoo-vendor",
-    version: "1.0.0",
-    orientation: "portrait",
-    scheme: "vantoo-vendor",
-    userInterfaceStyle: "light",
-    ios: { supportsTablet: true, bundleIdentifier: "com.vantoo.vendor" },
-    android: { package: "com.vantoo.vendor" },
-  },
-};
+{
+  "expo": {
+    "name": "Vantoo Vendor",
+    "slug": "vantoo-vendor",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "vantoo-vendor",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.vantoo.vendor" },
+    "android": { "package": "com.vantoo.vendor" },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}

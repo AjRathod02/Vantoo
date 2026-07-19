@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { requireAdminAuth, adminErrorResponse } from "@/lib/admin/auth";
 import { hasPermission } from "@/lib/admin/rbac";
-import { getOrder, listAllOrders, updateOrder } from "@/lib/server/orders";
+import { getOrder, listAllOrders } from "@/lib/server/orders";
 import { logAdminAction } from "@/lib/admin/audit";
 import { getRazorpay, isRazorpayConfigured } from "@/lib/razorpay";
-import type { Order } from "@/lib/types";
+import {
+  bindGatewayRefund,
+  prepareRefundAttempt,
+} from "@/lib/server/refunds";
+import { clientIpFromRequest, rateLimit } from "@/lib/security/rate-limit";
 
 export async function GET() {
   try {
@@ -30,13 +35,25 @@ export async function PATCH(request: Request) {
     if (!hasPermission(ctx.permissions, "refunds", "update")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    const limited = await rateLimit({
+      key: `admin-refund:${ctx.admin.id}:${clientIpFromRequest(request)}`,
+      limit: 10,
+      windowMs: 60_000,
+    });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: "Refund requests are temporarily limited." },
+        { status: limited.reason === "unavailable" ? 503 : 429 }
+      );
+    }
 
     const body = await request.json();
-    const { orderId, action, amount, reason } = body as {
+    const { orderId, action, amount, reason, idempotencyKey: requestedKey } = body as {
       orderId?: string;
       action?: string;
       amount?: number;
       reason?: string;
+      idempotencyKey?: string;
     };
 
     if (!orderId || !action) {
@@ -62,54 +79,66 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const patch: Partial<Order> = {};
-    if (action === "approve" || action === "partial") {
-      patch.refundStatus = "processing";
-      patch.refundAmount = refundAmount;
-    } else if (action === "complete") {
-      if (
-        existing.razorpayPaymentId &&
-        isRazorpayConfigured() &&
-        existing.paymentStatus === "paid"
-      ) {
-        try {
-          const razorpay = getRazorpay();
-          await razorpay.payments.refund(existing.razorpayPaymentId, {
-            amount: Math.round(refundAmount * 100),
-            notes: {
-              orderId,
-              reason: reason || "Admin refund",
-              adminId: ctx.admin.id,
-            },
-          });
-        } catch (e) {
-          console.error("Razorpay refund failed:", e);
-          return NextResponse.json(
-            {
-              error:
-                e instanceof Error
-                  ? e.message
-                  : "Razorpay refund failed — order status not updated",
-            },
-            { status: 502 }
-          );
-        }
-      }
-      patch.refundStatus = "completed";
-      patch.refundAmount = refundAmount;
-      patch.paymentStatus = "refunded";
-    } else if (action === "reject") {
-      patch.refundStatus = "none";
-      patch.refundAmount = undefined;
-    } else {
+    if (!["approve", "partial", "complete"].includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    const order = await updateOrder(orderId, patch);
-    if (!order) {
-      return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
+    if (
+      !existing.razorpayPaymentId ||
+      !isRazorpayConfigured() ||
+      !["paid", "partially_refunded"].includes(existing.paymentStatus ?? "")
+    ) {
+      return NextResponse.json(
+        { error: "Order does not have a refundable captured payment" },
+        { status: 409 }
+      );
     }
 
+    const amountPaise = Math.round(refundAmount * 100);
+    const idempotencyKey =
+      typeof requestedKey === "string" && requestedKey.length >= 16
+        ? requestedKey
+        : createHash("sha256")
+            .update(`${orderId}:${amountPaise}:${reason ?? ""}`)
+            .digest("hex");
+    const attempt = await prepareRefundAttempt({
+      orderId,
+      requestedBy: ctx.admin.id,
+      amountPaise,
+      reason: reason || "Admin refund",
+      idempotencyKey,
+    });
+
+    if (!attempt.gateway_refund_id) {
+      try {
+        const razorpay = getRazorpay();
+        const gatewayRefund = await razorpay.payments.refund(
+          existing.razorpayPaymentId,
+          {
+            amount: amountPaise,
+            notes: {
+              orderId,
+              refundAttemptId: attempt.id,
+              adminId: ctx.admin.id,
+            },
+          }
+        );
+        await bindGatewayRefund(attempt.id, gatewayRefund.id);
+      } catch (e) {
+        console.error("Razorpay refund failed:", e);
+        return NextResponse.json(
+          {
+            error:
+              e instanceof Error
+                ? e.message
+                : "Razorpay refund request failed",
+          },
+          { status: 502 }
+        );
+      }
+    }
+
+    const order = (await getOrder(orderId)) ?? existing;
     await logAdminAction({
       adminId: ctx.admin.id,
       adminEmail: ctx.admin.email,
@@ -119,7 +148,14 @@ export async function PATCH(request: Request) {
       details: { amount: refundAmount, reason },
     });
 
-    return NextResponse.json({ order });
+    return NextResponse.json({
+      order,
+      refundAttempt: {
+        id: attempt.id,
+        status: attempt.status,
+        gatewayRefundId: attempt.gateway_refund_id,
+      },
+    });
   } catch (error) {
     return adminErrorResponse(error);
   }

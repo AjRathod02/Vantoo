@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { getRazorpay, isRazorpayConfigured } from "@/lib/razorpay";
+import { isRazorpayConfigured } from "@/lib/razorpay";
 import {
-  findOrderByRazorpayPaymentId,
-} from "@/lib/payments/verify-payment";
-import { hasAdminClient, createAdminClient } from "@/utils/supabase/admin";
+  getPaymentAttemptByGatewayOrder,
+  markPaymentAttemptFailed,
+  recordPaymentWebhook,
+  updatePaymentWebhookStatus,
+} from "@/lib/server/payment-events";
+import { finalizeOrderPayment } from "@/lib/server/orders";
+import {
+  completeGatewayRefund,
+  markGatewayRefundFailed,
+} from "@/lib/server/refunds";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +43,13 @@ export async function POST(request: Request) {
 
   const rawBody = await request.text();
   const signature = request.headers.get("x-razorpay-signature");
+  const eventId = request.headers.get("x-razorpay-event-id");
+  if (!eventId) {
+    return NextResponse.json(
+      { error: "x-razorpay-event-id is required" },
+      { status: 400 }
+    );
+  }
 
   // Require webhook secret in production; allow unsigned in development only
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -67,67 +81,119 @@ export async function POST(request: Request) {
   const eventName = event.event ?? "";
   const payment = event.payload?.payment?.entity;
   const refund = event.payload?.refund?.entity;
+  const gatewayOrderId =
+    payment?.order_id == null ? null : String(payment.order_id);
+  const gatewayPaymentId =
+    payment?.id == null
+      ? refund?.payment_id == null
+        ? null
+        : String(refund.payment_id)
+      : String(payment.id);
+  const gatewayRefundId = refund?.id == null ? null : String(refund.id);
 
   try {
-    if (eventName === "payment.captured" && payment?.id) {
-      const paymentId = String(payment.id);
-      const existing = await findOrderByRazorpayPaymentId(paymentId);
-      if (existing && hasAdminClient()) {
-        const supabase = createAdminClient();
-        await supabase
-          .from("orders")
-          .update({
-            payment_status: "paid",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id)
-          .neq("payment_status", "refunded");
+    const stored = await recordPaymentWebhook({
+      eventId,
+      eventType: eventName,
+      gatewayOrderId,
+      gatewayPaymentId,
+      gatewayRefundId,
+      payload: event,
+    });
+    if (stored.processing_status === "processed") {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
+    if (eventName === "payment.captured" && gatewayOrderId && gatewayPaymentId) {
+      const attempt = await getPaymentAttemptByGatewayOrder(gatewayOrderId);
+      const amountPaise = Number(payment?.amount);
+      if (!attempt || !Number.isFinite(amountPaise)) {
+        await updatePaymentWebhookStatus(eventId, "unmatched");
+        return NextResponse.json({ received: true, unmatched: true });
       }
-      // If no local order yet, client still creates it after verify — nothing to do.
+      await finalizeOrderPayment({
+        userId: attempt.user_id,
+        orderId: attempt.order_id,
+        paymentAttemptId: attempt.id,
+        gatewayOrderId,
+        gatewayPaymentId,
+        amountPaise,
+      });
     }
 
-    if (eventName === "payment.failed" && payment?.id && hasAdminClient()) {
-      const orderId = payment.order_id ? String(payment.order_id) : null;
-      if (orderId) {
-        const supabase = createAdminClient();
-        await supabase
-          .from("orders")
-          .update({
-            payment_status: "failed",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("razorpay_order_id", orderId)
-          .eq("payment_status", "pending");
+    if (eventName === "payment.failed" && gatewayOrderId) {
+      try {
+        await markPaymentAttemptFailed({
+          gatewayOrderId,
+          gatewayPaymentId: gatewayPaymentId ?? undefined,
+          failureCode:
+            payment?.error_code == null ? undefined : String(payment.error_code),
+          failureReason:
+            payment?.error_description == null
+              ? undefined
+              : String(payment.error_description),
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("PAYMENT_ATTEMPT_NOT_FOUND")
+        ) {
+          await updatePaymentWebhookStatus(eventId, "unmatched");
+          return NextResponse.json({ received: true, unmatched: true });
+        }
+        throw error;
       }
     }
 
-    if (eventName === "refund.processed" && refund?.payment_id && hasAdminClient()) {
-      const paymentId = String(refund.payment_id);
-      const existing = await findOrderByRazorpayPaymentId(paymentId);
-      if (existing) {
-        const supabase = createAdminClient();
-        await supabase
-          .from("orders")
-          .update({
-            payment_status: "refunded",
-            refund_status: "completed",
-            refund_amount: refund.amount
-              ? Number(refund.amount) / 100
-              : undefined,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
+    if (eventName === "refund.processed" && gatewayRefundId) {
+      const amountPaise = Number(refund?.amount);
+      if (!Number.isFinite(amountPaise)) {
+        await updatePaymentWebhookStatus(eventId, "failed", "Invalid refund amount");
+        return NextResponse.json({ error: "Invalid refund amount" }, { status: 400 });
+      }
+      try {
+        await completeGatewayRefund(gatewayRefundId, amountPaise);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("REFUND_ATTEMPT_NOT_FOUND")
+        ) {
+          await updatePaymentWebhookStatus(eventId, "unmatched");
+          return NextResponse.json({ received: true, unmatched: true });
+        }
+        throw error;
       }
     }
 
-    // Touch Razorpay client so misconfig surfaces in logs during health checks
-    if (eventName === "ping") {
-      getRazorpay();
+    if (eventName === "refund.failed" && gatewayRefundId) {
+      try {
+        await markGatewayRefundFailed(
+          gatewayRefundId,
+          refund?.error_description == null
+            ? "Gateway refund failed"
+            : String(refund.error_description)
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.includes("REFUND_ATTEMPT_NOT_FOUND")
+        ) {
+          await updatePaymentWebhookStatus(eventId, "unmatched");
+          return NextResponse.json({ received: true, unmatched: true });
+        }
+        throw error;
+      }
     }
 
+    await updatePaymentWebhookStatus(eventId, "processed");
     return NextResponse.json({ received: true, event: eventName });
   } catch (e) {
     console.error("Razorpay webhook handler:", e);
+    await updatePaymentWebhookStatus(
+      eventId,
+      "failed",
+      e instanceof Error ? e.message : "Webhook processing failed"
+    ).catch(() => undefined);
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

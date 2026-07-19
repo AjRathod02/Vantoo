@@ -1,33 +1,12 @@
-# Vantoo Rider Mobile App
+# Vantoo Rider Mobile
 
-Separate rider application — **not** shared with customer or vendor login.
-
-## Features (planned)
-- Rider registration & KYC
-- Online/offline toggle
-- Accept/reject deliveries
-- Live GPS navigation
-- Delivery OTP & proof
-- Earnings, wallet, incentives
-
-## API
-All requests go to `/api/rider/*`:
-
-```
-POST /api/rider/apply
-GET  /api/rider/me
-PATCH /api/rider/availability
-GET  /api/rider/deliveries
-GET  /api/rider/earnings
-PATCH /api/rider/location
-```
-
-Set `EXPO_PUBLIC_API_URL=http://localhost:3000` in `.env`.
-
-## Setup
+Separate Expo app for delivery partners. Auth via `/api/auth/mobile/login`, APIs under `/api/rider/*`.
 
 ```bash
 cd apps/rider-mobile
 npm install
+cp .env.example .env
 npx expo start
 ```
+
+GPS sharing uses `expo-location` → `POST /api/rider/location` (approved rider required).

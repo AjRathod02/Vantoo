@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { restaurants } from "@/lib/data/restaurants";
+import { listRestaurants } from "@/lib/server/restaurants";
 
-export function GET() {
+export async function GET() {
+  const restaurants = await listRestaurants();
   return NextResponse.json({ restaurants });
 }

@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/server/auth";
 import { getOrder, updateOrderTracking } from "@/lib/server/orders";
-import {
-  applyRiderLocationUpdate,
-  getOrder as getMemoryOrder,
-} from "@/lib/server/orderStore";
-import { isPlatformEnabled, getServiceUrl, getInternalKey } from "@/lib/platform/client";
+import { clientIpFromRequest, rateLimit } from "@/lib/security/rate-limit";
 import {
   bearingDegrees,
   estimateEtaMinutes,
@@ -27,6 +23,17 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const limited = await rateLimit({
+    key: `admin-tracking:${user.id}:${clientIpFromRequest(request)}`,
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Tracking updates are temporarily limited." },
+      { status: limited.reason === "unavailable" ? 503 : 429 }
+    );
+  }
 
   let body: z.infer<typeof bodySchema>;
   try {
@@ -35,7 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const order = (await getOrder(body.orderId)) ?? getMemoryOrder(body.orderId);
+  const order = await getOrder(body.orderId);
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
@@ -69,7 +76,6 @@ export async function POST(request: Request) {
     riderRating: order.tracking?.riderRating,
   };
 
-  applyRiderLocationUpdate(body.orderId, payload);
   await updateOrderTracking(body.orderId, {
     riderLat: payload.lat,
     riderLng: payload.lng,
@@ -79,33 +85,7 @@ export async function POST(request: Request) {
     distanceRemainingM: payload.distanceRemainingM,
     etaMinutes: payload.etaMinutes,
     updatedAt: payload.timestamp,
-  });
-
-  if (isPlatformEnabled()) {
-    try {
-      await fetch(
-        `${getServiceUrl("tracking")}/v1/tracking/orders/${encodeURIComponent(body.orderId)}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-internal-key": getInternalKey(),
-          },
-          body: JSON.stringify({
-            riderId: user.id,
-            riderName: order.tracking?.riderName ?? "Rider",
-            riderPhone: order.tracking?.riderPhone ?? "",
-            latitude: body.lat,
-            longitude: body.lng,
-            speed,
-            heading,
-          }),
-        }
-      );
-    } catch {
-      // platform sync is best-effort
-    }
-  }
+  }, user.id, "admin");
 
   return NextResponse.json({ ok: true, tracking: payload });
 }

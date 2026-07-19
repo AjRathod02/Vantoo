@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/auth";
-import { listProducts, upsertProduct } from "@/lib/server/products";
+import { listProductsPage, upsertProduct } from "@/lib/server/products";
 import type { Product } from "@/lib/types";
 import { z } from "zod";
 
@@ -25,11 +25,17 @@ const productSchema = z.object({
   inStock: z.boolean(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireAdmin();
-    const products = await listProducts();
-    return NextResponse.json({ products });
+    const { searchParams } = new URL(request.url);
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 50;
+    const result = await listProductsPage(
+      { page, limit, q: searchParams.get("q") ?? undefined },
+      { cache: false }
+    );
+    return NextResponse.json(result);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Forbidden";
     if (message === "Unauthorized") {

@@ -1,7 +1,7 @@
-import { restaurants } from "@/lib/data/restaurants";
-import { products } from "@/lib/data/products";
 import { categories } from "@/lib/data/categories";
 import { offers } from "@/lib/data/offers";
+import { listProducts } from "@/lib/server/products";
+import { listRestaurants } from "@/lib/server/restaurants";
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { ServiceGrid } from "@/components/ServiceGrid";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -15,11 +15,13 @@ import {
 } from "@/lib/restaurants/promotions";
 
 export default async function HomePage() {
-  const [sponsored, flashOffers, enriched] = await Promise.all([
+  const [restaurantList, products, sponsored, flashOffers] = await Promise.all([
+    listRestaurants(),
+    listProducts(),
     getSponsoredRestaurants(),
     getActiveFlashOffers(),
-    enrichRestaurants(restaurants.slice(0, 8)),
   ]);
+  const enriched = await enrichRestaurants(restaurantList.slice(0, 8));
 
   const popularProducts = products
     .filter((p) => p.service === "food")

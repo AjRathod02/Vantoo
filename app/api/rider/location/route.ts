@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/server/auth";
-import { isPlatformEnabled } from "@/lib/platform/client";
-import { updateRiderLocation, getRiderMe } from "@/lib/platform/riders";
 import { getOrder, updateOrderTracking } from "@/lib/server/orders";
-import { applyRiderLocationUpdate } from "@/lib/server/orderStore";
+import { clientIpFromRequest, rateLimit } from "@/lib/security/rate-limit";
 import {
   bearingDegrees,
   estimateEtaMinutes,
@@ -27,6 +25,20 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (user.role !== "rider" && user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const limited = await rateLimit({
+    key: `rider-gps:${user.id}:${clientIpFromRequest(request)}`,
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Rider location updates are temporarily limited." },
+      { status: limited.reason === "unavailable" ? 503 : 429 }
+    );
+  }
 
   let body: z.infer<typeof bodySchema>;
   try {
@@ -42,25 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
   }
 
-  // When attaching location to an order, require an approved rider (platform) or admin.
   if (body.orderId) {
-    if (user.role !== "admin") {
-      if (!isPlatformEnabled()) {
-        return NextResponse.json(
-          { error: "Rider location updates require platform mode" },
-          { status: 503 }
-        );
-      }
-      try {
-        const me = await getRiderMe(user.id);
-        if (!me.rider || me.rider.status !== "approved") {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-      } catch {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
-
     const order = await getOrder(body.orderId);
     if (order) {
       const customer = {
@@ -85,7 +79,6 @@ export async function POST(request: Request) {
         riderRating: order.tracking?.riderRating,
       };
 
-      applyRiderLocationUpdate(body.orderId, payload);
       await updateOrderTracking(body.orderId, {
         riderLat: lat,
         riderLng: lng,
@@ -95,23 +88,7 @@ export async function POST(request: Request) {
         distanceRemainingM: payload.distanceRemainingM,
         etaMinutes: payload.etaMinutes,
         updatedAt: payload.timestamp,
-      });
-    }
-  }
-
-  if (isPlatformEnabled()) {
-    try {
-      const location = await updateRiderLocation(user.id, {
-        latitude: lat,
-        longitude: lng,
-        orderId: body.orderId,
-      });
-      return NextResponse.json({ location, ok: true });
-    } catch (e) {
-      return NextResponse.json(
-        { error: e instanceof Error ? e.message : "Failed" },
-        { status: 400 }
-      );
+      }, user.id);
     }
   }
 

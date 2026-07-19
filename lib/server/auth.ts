@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
+import { createAnonClient } from "@/utils/supabase/anon";
 import { createAdminClient, hasAdminClient } from "@/utils/supabase/admin";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { User } from "@/lib/types";
 
 type ProfileRow = {
@@ -10,7 +11,7 @@ type ProfileRow = {
   role: string | null;
 };
 
-async function fetchProfile(userId: string, supabase: ReturnType<typeof createClient>) {
+async function fetchProfileById(userId: string): Promise<ProfileRow | null> {
   if (hasAdminClient()) {
     try {
       const admin = createAdminClient();
@@ -21,9 +22,18 @@ async function fetchProfile(userId: string, supabase: ReturnType<typeof createCl
         .maybeSingle<ProfileRow>();
       if (data) return data;
     } catch {
-      // fall through to user-scoped client
+      // fall through
     }
   }
+  return null;
+}
+
+async function fetchProfile(
+  userId: string,
+  supabase: ReturnType<typeof createClient>
+): Promise<ProfileRow | null> {
+  const fromAdmin = await fetchProfileById(userId);
+  if (fromAdmin) return fromAdmin;
 
   const { data, error } = await supabase
     .from("profiles")
@@ -35,7 +45,54 @@ async function fetchProfile(userId: string, supabase: ReturnType<typeof createCl
   return data;
 }
 
-export async function getSessionUser(): Promise<User | null> {
+function mapUser(
+  authUser: {
+    id: string;
+    email?: string | null;
+    user_metadata?: Record<string, unknown>;
+  },
+  profile?: ProfileRow | null
+): User {
+  const meta = authUser.user_metadata ?? {};
+  return {
+    id: authUser.id,
+    name:
+      profile?.name ||
+      (typeof meta.name === "string" ? meta.name : undefined) ||
+      "Vantoo User",
+    phone:
+      profile?.phone ||
+      (typeof meta.phone === "string" ? meta.phone : undefined) ||
+      "",
+    email: profile?.email || authUser.email || undefined,
+    role: profile?.role === "admin" ? "admin" : "customer",
+  };
+}
+
+async function getUserFromBearer(): Promise<User | null> {
+  const headerStore = await headers();
+  const auth = headerStore.get("authorization");
+  if (!auth?.startsWith("Bearer ")) return null;
+
+  const token = auth.slice("Bearer ".length).trim();
+  if (!token || token.length < 20) return null;
+
+  try {
+    const supabase = createAnonClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+
+    const profile = await fetchProfileById(user.id);
+    return mapUser(user, profile);
+  } catch {
+    return null;
+  }
+}
+
+async function getUserFromCookies(): Promise<User | null> {
   try {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
@@ -46,27 +103,21 @@ export async function getSessionUser(): Promise<User | null> {
     if (!user) return null;
 
     const profile = await fetchProfile(user.id, supabase);
-
-    if (!profile) {
-      return {
-        id: user.id,
-        name: (user.user_metadata?.name as string | undefined) || "Vantoo User",
-        phone: (user.user_metadata?.phone as string | undefined) || "",
-        email: user.email,
-        role: "customer",
-      };
-    }
-
-    return {
-      id: user.id,
-      name: profile.name || (user.user_metadata?.name as string | undefined) || "Vantoo User",
-      phone: profile.phone || (user.user_metadata?.phone as string | undefined) || "",
-      email: profile.email || user.email,
-      role: profile.role === "admin" ? "admin" : "customer",
-    };
+    return mapUser(user, profile);
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolves the current user from:
+ * 1) Authorization: Bearer <supabase_access_token> (mobile / native)
+ * 2) Supabase session cookies (web)
+ */
+export async function getSessionUser(): Promise<User | null> {
+  const fromBearer = await getUserFromBearer();
+  if (fromBearer) return fromBearer;
+  return getUserFromCookies();
 }
 
 export async function requireUser() {
